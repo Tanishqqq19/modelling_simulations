@@ -249,40 +249,58 @@ class AtomicVideoGenerator:
         pass
 
 # Example usage and utility functions
-def generate_sample_data_h2o_double(n_frames=30):
+def generate_sample_data_h2o_moving(n_frames=60):
     """
-    Generate coordinate data for two H2O molecules using RDKit.
-    Adds small vibration noise for animation purposes.
+    Two water molecules with center-of-mass motion + vibration.
+    They bounce off each other on close contact.
     """
-    # Build real H2O molecule
+    # Create real H2O molecule
     smiles = "O"
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
-
     AllChem.EmbedMolecule(mol)
     AllChem.UFFOptimizeMolecule(mol)
 
     conf = mol.GetConformer()
     atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]
-    coords_single = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())])
+    coords_base = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())])
+    
+    atom_types = atom_types_single * 3
 
-    # Molecule 1 centered at (2, 2, 2), Molecule 2 at (4, 2, 2)
-    mol1_center = np.array([2.0, 2.0, 2.0])
-    mol2_center = np.array([4.0, 2.0, 2.0])
+    # Initial positions
+    mol1_center = np.array([1.0, 2.0, 2.0])
+    mol2_center = np.array([5.0, 2.0, 2.0])
+    
+    # Initial velocities
+    v1 = np.array([0.05, 0.0, 0.0])  # molecule 1 to the right
+    v2 = np.array([-0.05, 0.0, 0.0]) # molecule 2 to the left
 
     coordinates = []
-    atom_types = atom_types_single * 2  # ['O', 'H', 'H', 'O', 'H', 'H']
 
-    for _ in range(n_frames):
-        # Add vibration
-        noise1 = np.random.normal(0, 0.01, coords_single.shape)
-        noise2 = np.random.normal(0, 0.01, coords_single.shape)
+    for frame in range(n_frames):
+        # Simple vibration
+        noise1 = np.random.normal(0, 0.01, coords_base.shape)
+        noise2 = np.random.normal(0, 0.01, coords_base.shape)
 
-        mol1 = coords_single + noise1 + mol1_center
-        mol2 = coords_single + noise2 + mol2_center
+        # Calculate new positions
+        mol1 = coords_base + noise1 + mol1_center
+        mol2 = coords_base + noise2 + mol2_center
 
         combined = np.vstack([mol1, mol2])
         coordinates.append(combined)
+
+        # Distance between O atoms (index 0 and 3)
+        O1 = mol1[0]
+        O2 = mol2[0]
+        dist = np.linalg.norm(O1 - O2)
+
+        # Simple collision check
+        if dist < 1.8:  # approximate contact threshold
+            v1, v2 = -v1, -v2  # reverse direction (elastic bounce)
+
+        # Update molecule centers
+        mol1_center += v1
+        mol2_center += v2
 
     return coordinates, atom_types
 
@@ -292,7 +310,7 @@ def generate_sample_data_h2o_double(n_frames=30):
 
 def create_sample_xyz_files():
     """Create sample XYZ files for testing"""
-    coords, atom_types = generate_sample_data_h2o_double()
+    coords, atom_types = generate_sample_data_h2o_moving()
     
     for i, frame_coords in enumerate(coords):
         filename = f"frame_{i:03d}.xyz"
@@ -308,7 +326,7 @@ def create_sample_xyz_files():
 if __name__ == "__main__":
     # Example 1: Generate sample data and create videos
     print("Generating sample data...")
-    coordinates, atom_types = generate_sample_data_h2o_double()
+    coordinates, atom_types = generate_sample_data_h2o_moving()
     
     # Create video generator
     generator = AtomicVideoGenerator()
