@@ -72,6 +72,11 @@ class AtomicVideoGenerator:
         
         return np.array(atoms), types
     
+
+    def set_bonds(self, bond_list):
+        self.bonds = bond_list
+
+    
     def read_trajectory_files(self, file_pattern, num_frames=None):
         """
         Read multiple coordinate files representing trajectory
@@ -150,7 +155,11 @@ class AtomicVideoGenerator:
         time_text = ax.text(0.02, 0.98, '', transform=ax.transAxes, 
                            verticalalignment='top', fontsize=12)
         
-        bond_list = [(0, 1), (0, 2), (3, 4), (3, 5)]
+        bond_list = []
+        for i in range(0, len(self.atom_types), 3):
+            bond_list.append((i, i + 1))
+            bond_list.append((i, i + 2))
+
         bond_lines = [ax.plot([], [], color='gray', linewidth=1)[0] for _ in bond_list]
 
 
@@ -220,7 +229,14 @@ class AtomicVideoGenerator:
 
             for i in range(len(coords)):
                 ax.scatter(coords[i, 0], coords[i, 1], coords[i, 2],
-                        c=colors[i], s=sizes[i]*5, alpha=0.9)  # multiply size for better visibility
+                        c=colors[i], s=sizes[i]*5, alpha=0.9)
+
+            # ✅ Draw bonds
+            if hasattr(self, 'bonds'):
+                for i, j in self.bonds:
+                    bond = np.array([coords[i], coords[j]])
+                    ax.plot(bond[:, 0], bond[:, 1], bond[:, 2], c='gray', linewidth=2)
+
 
             ax.set_title(f'Frame: {frame}')
             ax.set_xlabel('X')
@@ -249,67 +265,58 @@ class AtomicVideoGenerator:
         pass
 
 # Example usage and utility functions
-def generate_sample_data_h2o_moving(n_frames=60):
+def generate_sample_data_h2o_moving(n_frames=60, n_molecules=10):
     """
-    Two water molecules with center-of-mass motion + vibration.
-    They bounce off each other on close contact.
+    Simulates multiple H₂O molecules with center-of-mass motion, vibration, and simple bouncing.
     """
-    # Create real H2O molecule
-    smiles = "O"
-    mol = Chem.MolFromSmiles(smiles) # defines water molecules:H2O
-    mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol) # generates 3D coordinates
-    AllChem.UFFOptimizeMolecule(mol) # optimizes shape using force field
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    import numpy as np
+
+    # Build single water molecule
+    mol = Chem.AddHs(Chem.MolFromSmiles("O"))
+    AllChem.EmbedMolecule(mol)
+    AllChem.UFFOptimizeMolecule(mol)
 
     conf = mol.GetConformer()
-    atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]  # makes in terms of ['O', 'H', 'H']
-    coords_base = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())]) #(3, 3) array of xyz coordinates
-    
-    print(atom_types_single)
-    print(coords_base)
+    coords_base = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())])
+    atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]  # ['O', 'H', 'H']
 
-    atom_types = atom_types_single * 2  # this makes it 2 molecules
+    n_atoms = len(atom_types_single)
+    atom_types = atom_types_single * n_molecules
 
-    # Initial positions
-    mol1_center = np.array([1.0, 2.0, 2.0])
-    mol2_center = np.array([5.0, 2.0, 2.0])
-    
-    # Initial velocities
-    v1 = np.array([0.05, 0.0, 0.0])  # molecule 1 to the right
-    v2 = np.array([-0.05, 0.0, 0.0]) # molecule 2 to the left
+    # Initialize molecule centers and velocities
+    centers = np.random.uniform(1.5, 8.5, size=(n_molecules, 3))
+    velocities = np.random.uniform(-0.05, 0.05, size=(n_molecules, 3))
 
     coordinates = []
 
-    for frame in range(n_frames): # goes over each frame one by one
-        # These two lines add vibration
-        noise1 = np.random.normal(0, 0.01, coords_base.shape)
-        noise2 = np.random.normal(0, 0.01, coords_base.shape)
+    for frame in range(n_frames):
+        frame_atoms = []
 
-        # Calculate new positions
-        mol1 = coords_base + noise1 + mol1_center
-        mol2 = coords_base + noise2 + mol2_center
+        # Add vibration and place atoms
+        for i in range(n_molecules):
+            noise = np.random.normal(0, 0.01, coords_base.shape)
+            mol_coords = coords_base + noise + centers[i]
+            frame_atoms.append(mol_coords)
 
-        combined = np.vstack([mol1, mol2])
-        coordinates.append(combined)
+        coords = np.vstack(frame_atoms)
+        coordinates.append(coords)
 
+        # Elastic bounce between O atoms (1st atom of each molecule)
+        for i in range(n_molecules):
+            for j in range(i + 1, n_molecules):
+                O_i = coords_base[0] + centers[i]
+                O_j = coords_base[0] + centers[j]
+                distance = np.linalg.norm(O_i - O_j)
+                if distance < 1.8:
+                    # Swap velocities for simple elastic bounce
+                    velocities[i], velocities[j] = -velocities[i], -velocities[j]
 
-        # Distance between O atoms (index 0 and 3)
-        O1 = mol1[0]
-        O2 = mol2[0]
-        dist = np.linalg.norm(O1 - O2)
-
-        # Simple collision check
-        if dist < 1.8:  # approximate contact threshold
-            v1=-v1
-            v2=-v2
-            # reverse direction (elastic bounce)
-
-        # Update molecule centers
-        mol1_center += v1
-        mol2_center += v2
+        # Update center positions
+        centers += velocities
 
     return coordinates, atom_types
-
 
 
 
@@ -333,6 +340,12 @@ if __name__ == "__main__":
     # Example 1: Generate sample data and create videos
     print("Generating sample data...")
     coordinates, atom_types = generate_sample_data_h2o_moving()
+
+    bond_list = []
+    for i in range(0, len(atom_types), 3):  # Every H₂O molecule has 3 atoms: O, H, H
+        bond_list.append((i, i + 1))  # O-H
+        bond_list.append((i, i + 2))  # O-H
+
     
     # Create video generator
     generator = AtomicVideoGenerator()
@@ -340,11 +353,11 @@ if __name__ == "__main__":
     
     # Create 2D animation
     print("Creating 2D animation...")
-    generator.create_2d_animation('official_2d_h2o.mp4', fps=5, plane='xy')
+    generator.create_2d_animation('new_2d_h2o.mp4', fps=5, plane='xy')
     
     # Create 3D animation
     print("Creating 3D animation...")
-    generator.create_3d_animation('official_3d_h2o.mp4', fps=5)
+    generator.create_3d_animation('new_3d_h2o.mp4', fps=5)
     
     # Example 2: Create sample XYZ files and read them
     print("\nCreating sample XYZ files...")
@@ -358,3 +371,196 @@ if __name__ == "__main__":
     print("\nAll animations created successfully!")
     print("You'll need ffmpeg installed to generate MP4 files.")
     print("Install with: pip install ffmpeg-python")
+
+
+# ===== Classical MD Simulation Engine =====
+
+
+import numpy as np
+
+# Lennard-Jones parameters (ε in kcal/mol, σ in Å)
+LJ_PARAMS = {
+    'H': {'epsilon': 0.046, 'sigma': 1.358},
+    'O': {'epsilon': 0.1521, 'sigma': 3.1507}
+}
+
+# Atomic masses (approximate, in atomic mass units)
+ATOMIC_MASS = {
+    'H': 1.008,
+    'O': 15.999
+}
+
+class Atom:
+    def __init__(self, position, velocity, atom_type):
+        self.x = np.array(position, dtype=np.float64)  # position
+        self.v = np.array(velocity, dtype=np.float64)  # velocity
+        self.f = np.zeros(3, dtype=np.float64)         # force
+        self.type = atom_type
+        self.mass = ATOMIC_MASS[atom_type]
+
+def lennard_jones_force(r_vec, epsilon, sigma):
+    r = np.linalg.norm(r_vec)
+    if r == 0:
+        return np.zeros(3)
+    sr6 = (sigma / r)**6
+    force_mag = 24 * epsilon / r * (2 * sr6**2 - sr6)
+    return force_mag * (r_vec / r)
+
+def compute_forces(atoms,bond_list):
+    n = len(atoms)
+    for atom in atoms:
+        atom.f[:] = 0.0
+
+    total_energy = 0.0
+    for i in range(n):
+        for j in range(i + 1, n):
+            r_vec = atoms[j].x - atoms[i].x
+            r = np.linalg.norm(r_vec)
+            if r == 0:
+                continue
+
+            eps_i = LJ_PARAMS[atoms[i].type]['epsilon']
+            sig_i = LJ_PARAMS[atoms[i].type]['sigma']
+            eps_j = LJ_PARAMS[atoms[j].type]['epsilon']
+            sig_j = LJ_PARAMS[atoms[j].type]['sigma']
+
+            epsilon = np.sqrt(eps_i * eps_j)
+            sigma = 0.5 * (sig_i + sig_j)
+
+            sr6 = (sigma / r)**6
+            lj_energy = 4 * epsilon * (sr6**2 - sr6)
+            force = lennard_jones_force(r_vec, epsilon, sigma)
+
+            atoms[i].f += force
+            atoms[j].f -= force
+            total_energy += lj_energy
+        
+        for i, j in bond_list:
+            r_vec = atoms[j].x - atoms[i].x
+            f = bond_force(r_vec)
+            atoms[i].f += f
+            atoms[j].f -= f
+
+    return total_energy
+
+    return total_energy
+
+
+    for i, j in bond_list:
+        r_vec = atoms[j].x - atoms[i].x
+        f = bond_force(r_vec)
+        atoms[i].f += f
+        atoms[j].f -= f
+
+
+def run_md_simulation(atom_positions, atom_types, n_frames=100, dt=0.5):
+    atoms = []
+    for pos, typ in zip(atom_positions, atom_types):
+        velocity = np.random.normal(0, 0.05, 3)
+        atoms.append(Atom(position=pos, velocity=velocity, atom_type=typ))
+
+
+    bond_list = []
+    n_molecules = len(atom_positions) // 3
+    for i in range(n_molecules):
+        offset = i * 3
+        bond_list += [(offset, offset + 1), (offset, offset + 2)]
+
+
+
+
+    coordinates = []
+    compute_forces(atoms, bond_list)
+
+    for _ in range(n_frames):
+        # First half step: position update
+        for atom in atoms:
+            atom.x += atom.v * dt + 0.5 * atom.f / atom.mass * dt**2
+
+        old_forces = [atom.f.copy() for atom in atoms]
+        compute_forces(atoms, bond_list)
+        
+        # Second half step: velocity update
+        for atom, f_old in zip(atoms, old_forces):
+            atom.v += 0.5 * (atom.f + f_old) / atom.mass * dt
+
+        # Record positions
+        frame_coords = np.array([atom.x.copy() for atom in atoms])
+        coordinates.append(frame_coords)
+
+    atom_type_list = [atom.type for atom in atoms]
+    return coordinates, atom_type_list
+
+
+
+# ----------------- Classical MD Utilities -------------------
+
+def lennard_jones_force(r_vec, epsilon=0.65, sigma=3.15):
+    r = np.linalg.norm(r_vec)
+    if r < 1e-10:
+        return np.zeros(3)
+    force = 48 * epsilon * ((sigma**12 / r**13) - 0.5 * (sigma**6 / r**7)) * r_vec / r
+    return force
+
+def bond_force(r_vec, r0=0.96, k=450):
+    r = np.linalg.norm(r_vec)
+    return -k * (r - r0) * (r_vec / r)
+
+def velocity_verlet_update(positions, velocities, forces, masses, dt):
+    new_positions = positions + velocities * dt + 0.5 * (forces / masses[:, np.newaxis]) * dt**2
+    return new_positions
+
+
+
+def generate_sample_data_h2o_moving(n_frames=60, n_molecules=10):
+    """
+    Simulates multiple H₂O molecules with center-of-mass motion, vibration, and simple bouncing.
+    """
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+    import numpy as np
+
+    # Build single water molecule
+    mol = Chem.AddHs(Chem.MolFromSmiles("O"))
+    AllChem.EmbedMolecule(mol)
+    AllChem.UFFOptimizeMolecule(mol)
+
+    conf = mol.GetConformer()
+    coords_base = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())])
+    atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]  # ['O', 'H', 'H']
+
+    n_atoms = len(atom_types_single)
+    atom_types = atom_types_single * n_molecules
+
+    # Initialize molecule centers and velocities
+    centers = np.random.uniform(1.5, 8.5, size=(n_molecules, 3))
+    velocities = np.random.uniform(-0.05, 0.05, size=(n_molecules, 3))
+
+    coordinates = []
+
+    for frame in range(n_frames):
+        frame_atoms = []
+
+        # Add vibration and place atoms
+        for i in range(n_molecules):
+            noise = np.random.normal(0, 0.01, coords_base.shape)
+            mol_coords = coords_base + noise + centers[i]
+            frame_atoms.append(mol_coords)
+
+        coords = np.vstack(frame_atoms)
+        coordinates.append(coords)
+
+        # Elastic bounce between O atoms (1st atom of each molecule)
+        for i in range(n_molecules):
+            for j in range(i + 1, n_molecules):
+                O_i = coords_base[0] + centers[i]
+                O_j = coords_base[0] + centers[j]
+                distance = np.linalg.norm(O_i - O_j)
+                if distance < 1.8:
+                    # Swap velocities for simple elastic bounce
+                    velocities[i], velocities[j] = -velocities[i], -velocities[j]
+
+        # Update center positions
+        centers += velocities
+
+    return coordinates, atom_types
