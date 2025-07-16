@@ -5,13 +5,21 @@ import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
 import os
 
+from rdkit import Chem
+from rdkit.Chem import AllChem
+from rdkit.Chem import rdmolfiles
+import numpy as np
+
+
+
+
 class AtomicVideoGenerator:
     def __init__(self):
         self.coordinates = []
         self.atom_types = []
         self.timesteps = []
         self.colors = {
-            'H': 'white',
+            'H': 'blue',
             'C': 'black',
             'N': 'blue',
             'O': 'red',
@@ -135,7 +143,10 @@ class AtomicVideoGenerator:
                    all_coords[:, idx2].max() + margin)
         
         # Initialize empty scatter plot
-        scat = ax.scatter([], [], s=[], c=[], alpha=0.7)
+        scat = ax.scatter([], [], s=50, c='yellow', alpha=0.8)
+
+
+
         time_text = ax.text(0.02, 0.98, '', transform=ax.transAxes, 
                            verticalalignment='top', fontsize=12)
         
@@ -190,30 +201,24 @@ class AtomicVideoGenerator:
         ax.set_zlabel('Z')
         
         def animate(frame):
-            ax.clear()
-            
-            # Reset limits after clear
-            ax.set_xlim(all_coords[:, 0].min() - margin, 
-                       all_coords[:, 0].max() + margin)
-            ax.set_ylim(all_coords[:, 1].min() - margin, 
-                       all_coords[:, 1].max() + margin)
-            ax.set_zlim(all_coords[:, 2].min() - margin, 
-                       all_coords[:, 2].max() + margin)
-            
+            ax.cla()  # Clear plot but keep axes
+            ax.set_xlim(all_coords[:, 0].min() - margin, all_coords[:, 0].max() + margin)
+            ax.set_ylim(all_coords[:, 1].min() - margin, all_coords[:, 1].max() + margin)
+            ax.set_zlim(all_coords[:, 2].min() - margin, all_coords[:, 2].max() + margin)
+
             coords = self.coordinates[frame]
-            
-            # Plot atoms
-            for i, (atom_type, coord) in enumerate(zip(self.atom_types, coords)):
-                color = self.colors.get(atom_type, self.colors['default'])
-                size = self.sizes.get(atom_type, self.sizes['default'])
-                
-                ax.scatter(coord[0], coord[1], coord[2], 
-                          c=color, s=size, alpha=0.7)
-            
+            colors = [self.colors.get(atom, self.colors['default']) for atom in self.atom_types]
+            sizes = [self.sizes.get(atom, self.sizes['default']) for atom in self.atom_types]
+
+            for i in range(len(coords)):
+                ax.scatter(coords[i, 0], coords[i, 1], coords[i, 2],
+                        c=colors[i], s=sizes[i]*5, alpha=0.9)  # multiply size for better visibility
+
             ax.set_title(f'Frame: {frame}')
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
             ax.set_zlabel('Z')
+
         
         anim = FuncAnimation(fig, animate, frames=len(self.coordinates),
                            interval=1000//fps, repeat=True)
@@ -236,41 +241,50 @@ class AtomicVideoGenerator:
         pass
 
 # Example usage and utility functions
-def generate_sample_data():
-    """Generate sample atomic trajectory data for testing"""
-    np.random.seed(42)
-    n_atoms = 10
-    n_frames = 50
-    
-    # Create some sample atoms
-    atom_types = ['C', 'H', 'O', 'N'] * (n_atoms // 4)
-    if len(atom_types) < n_atoms:
-        atom_types.extend(['C'] * (n_atoms - len(atom_types)))
-    
-    # Generate trajectory with some movement
+def generate_sample_data_h2o_double(n_frames=30):
+    """
+    Generate coordinate data for two H2O molecules using RDKit.
+    Adds small vibration noise for animation purposes.
+    """
+    # Build real H2O molecule
+    smiles = "O"
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+
+    AllChem.EmbedMolecule(mol)
+    AllChem.UFFOptimizeMolecule(mol)
+
+    conf = mol.GetConformer()
+    atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]
+    coords_single = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())])
+
+    # Molecule 1 centered at (2, 2, 2), Molecule 2 at (4, 2, 2)
+    mol1_center = np.array([2.0, 2.0, 2.0])
+    mol2_center = np.array([4.0, 2.0, 2.0])
+
     coordinates = []
-    base_coords = np.random.randn(n_atoms, 3) * 5
-    
-    for frame in range(n_frames):
-        # Add some oscillating motion
-        t = frame / 10.0
-        displacement = np.array([
-            np.sin(t) * 0.5,
-            np.cos(t) * 0.3,
-            np.sin(t * 0.5) * 0.2
-        ])
-        
-        frame_coords = base_coords + displacement
-        # Add some random thermal motion
-        frame_coords += np.random.randn(n_atoms, 3) * 0.1
-        
-        coordinates.append(frame_coords)
-    
+    atom_types = atom_types_single * 2  # ['O', 'H', 'H', 'O', 'H', 'H']
+
+    for _ in range(n_frames):
+        # Add vibration
+        noise1 = np.random.normal(0, 0.01, coords_single.shape)
+        noise2 = np.random.normal(0, 0.01, coords_single.shape)
+
+        mol1 = coords_single + noise1 + mol1_center
+        mol2 = coords_single + noise2 + mol2_center
+
+        combined = np.vstack([mol1, mol2])
+        coordinates.append(combined)
+
     return coordinates, atom_types
+
+
+
+
 
 def create_sample_xyz_files():
     """Create sample XYZ files for testing"""
-    coords, atom_types = generate_sample_data()
+    coords, atom_types = generate_sample_data_h2o_double()
     
     for i, frame_coords in enumerate(coords):
         filename = f"frame_{i:03d}.xyz"
@@ -286,7 +300,7 @@ def create_sample_xyz_files():
 if __name__ == "__main__":
     # Example 1: Generate sample data and create videos
     print("Generating sample data...")
-    coordinates, atom_types = generate_sample_data()
+    coordinates, atom_types = generate_sample_data_h2o_double()
     
     # Create video generator
     generator = AtomicVideoGenerator()
@@ -294,11 +308,11 @@ if __name__ == "__main__":
     
     # Create 2D animation
     print("Creating 2D animation...")
-    generator.create_2d_animation('sample_2d.mp4', fps=5, plane='xy')
+    generator.create_2d_animation('official_2d_h2o.mp4', fps=5, plane='xy')
     
     # Create 3D animation
     print("Creating 3D animation...")
-    generator.create_3d_animation('sample_3d.mp4', fps=5)
+    generator.create_3d_animation('official_3d_h2o.mp4', fps=5)
     
     # Example 2: Create sample XYZ files and read them
     print("\nCreating sample XYZ files...")
