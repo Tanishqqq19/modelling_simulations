@@ -256,16 +256,19 @@ def generate_sample_data_h2o_moving(n_frames=60):
     """
     # Create real H2O molecule
     smiles = "O"
-    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.MolFromSmiles(smiles) # defines water molecules:H2O
     mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol)
-    AllChem.UFFOptimizeMolecule(mol)
+    AllChem.EmbedMolecule(mol) # generates 3D coordinates
+    AllChem.UFFOptimizeMolecule(mol) # optimizes shape using force field
 
     conf = mol.GetConformer()
-    atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]
-    coords_base = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())])
+    atom_types_single = [atom.GetSymbol() for atom in mol.GetAtoms()]  # makes in terms of ['O', 'H', 'H']
+    coords_base = np.array([list(conf.GetAtomPosition(i)) for i in range(mol.GetNumAtoms())]) #(3, 3) array of xyz coordinates
     
-    atom_types = atom_types_single * 3
+    print(atom_types_single)
+    print(coords_base)
+
+    atom_types = atom_types_single * 2  # this makes it 2 molecules
 
     # Initial positions
     mol1_center = np.array([1.0, 2.0, 2.0])
@@ -277,8 +280,8 @@ def generate_sample_data_h2o_moving(n_frames=60):
 
     coordinates = []
 
-    for frame in range(n_frames):
-        # Simple vibration
+    for frame in range(n_frames): # goes over each frame one by one
+        # These two lines add vibration
         noise1 = np.random.normal(0, 0.01, coords_base.shape)
         noise2 = np.random.normal(0, 0.01, coords_base.shape)
 
@@ -289,6 +292,7 @@ def generate_sample_data_h2o_moving(n_frames=60):
         combined = np.vstack([mol1, mol2])
         coordinates.append(combined)
 
+
         # Distance between O atoms (index 0 and 3)
         O1 = mol1[0]
         O2 = mol2[0]
@@ -296,7 +300,9 @@ def generate_sample_data_h2o_moving(n_frames=60):
 
         # Simple collision check
         if dist < 1.8:  # approximate contact threshold
-            v1, v2 = -v1, -v2  # reverse direction (elastic bounce)
+            v1=-v1
+            v2=-v2
+            # reverse direction (elastic bounce)
 
         # Update molecule centers
         mol1_center += v1
