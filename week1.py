@@ -150,22 +150,30 @@ class AtomicVideoGenerator:
         time_text = ax.text(0.02, 0.98, '', transform=ax.transAxes, 
                            verticalalignment='top', fontsize=12)
         
+        bond_list = [(0, 1), (0, 2), (3, 4), (3, 5)]
+        bond_lines = [ax.plot([], [], color='gray', linewidth=1)[0] for _ in bond_list]
+
+
         def animate(frame):
             coords = self.coordinates[frame]
-            
-            # Get colors and sizes for atoms
-            colors = [self.colors.get(atom, self.colors['default']) 
-                     for atom in self.atom_types]
-            sizes = [self.sizes.get(atom, self.sizes['default']) 
-                    for atom in self.atom_types]
-            
-            # Update scatter plot
+
+            colors = [self.colors.get(atom, self.colors['default']) for atom in self.atom_types]
+            sizes = [self.sizes.get(atom, self.sizes['default']) for atom in self.atom_types]
+
             scat.set_offsets(coords[:, [idx1, idx2]])
             scat.set_sizes(sizes)
             scat.set_color(colors)
-            
+
             time_text.set_text(f'Frame: {frame}')
-            return scat, time_text
+
+            # Draw bonds
+            for line, (i, j) in zip(bond_lines, bond_list):
+                x = [coords[i, idx1], coords[j, idx1]]
+                y = [coords[i, idx2], coords[j, idx2]]
+                line.set_data(x, y)
+
+            return [scat, time_text] + bond_lines
+
         
         anim = FuncAnimation(fig, animate, frames=len(self.coordinates),
                            interval=1000//fps, blit=True, repeat=True)
