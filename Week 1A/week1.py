@@ -265,7 +265,7 @@ class AtomicVideoGenerator:
         pass
 
 # Example usage and utility functions
-def generate_sample_data_h2o_moving(n_frames=60, n_molecules=10):
+def generate_sample_data_h2o_moving(n_frames=150, n_molecules=10):
     """
     Simulates multiple H₂O molecules with center-of-mass motion, vibration, and simple bouncing.
     """
@@ -479,7 +479,7 @@ def run_md_simulation(atom_positions, atom_types, n_frames=100, dt=0.5):
 
         old_forces = [atom.f.copy() for atom in atoms]
         compute_forces(atoms, bond_list)
-        
+
         # Second half step: velocity update
         for atom, f_old in zip(atoms, old_forces):
             atom.v += 0.5 * (atom.f + f_old) / atom.mass * dt
@@ -512,7 +512,7 @@ def velocity_verlet_update(positions, velocities, forces, masses, dt):
 
 
 
-def generate_sample_data_h2o_moving(n_frames=60, n_molecules=10):
+def generate_sample_data_h2o_moving(n_frames=150, n_molecules=10):
     """
     Simulates multiple H₂O molecules with center-of-mass motion, vibration, and simple bouncing.
     """
