@@ -1,0 +1,26 @@
+title "nwchem"
+
+permanent_dir /Users/tanishqmalhotra/Documents/GitHub/norm-research-project/nwchem
+
+scratch_dir /Users/tanishqmalhotra/Documents/GitHub/norm-research-project/nwchem
+
+start nwchem
+
+
+
+geometry units angstrom nocenter noautosym noautoz
+  H  0.0000000000000000e+00 0.0000000000000000e+00 -2.6899940855862520e-02
+  H  0.0000000000000000e+00 0.0000000000000000e+00 7.2689994085586251e-01
+end
+
+basis noprint
+   * library 3-21G
+end
+
+dft
+  xc xpbe96 cpbe96
+  mult 1
+end
+
+task dft gradient
+
