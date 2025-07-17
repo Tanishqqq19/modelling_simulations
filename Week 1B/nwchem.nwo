@@ -1,0 +1,18 @@
+ argument  1 = nwchem.nwi
+  could not open a file in permanent directory:               /Users/tanishqmalhotra/Documents/GitHub/norm-research-project/Week 1B/nwchem
+  could not open a file in scratch directory:             /Users/tanishqmalhotra/Documents/GitHub/norm-research-project/Week 1B/nwchem
+  Both permanent and scratch directory not accessible
+ ------------------------------------------------------------------------
+ ******** Fatal Error ********                 911
+ ------------------------------------------------------------------------
+ ------------------------------------------------------------------------
+  current input line : 
+     0: task dft gradient
+ ------------------------------------------------------------------------
+ ------------------------------------------------------------------------
+ There is an error in the input file
+ ------------------------------------------------------------------------
+ For more information see the NWChem manual at https://nwchemgit.github.io
+
+
+ For further details see manual section:                                                                                                                                                                                                                                                                

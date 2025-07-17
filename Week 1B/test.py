@@ -1,51 +1,69 @@
-"""Demonstrates molecular dynamics with constant energy."""
+import numpy as np
 
-from ase import units
-from ase.lattice.cubic import FaceCenteredCubic
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.md.verlet import VelocityVerlet
+import ase.units as units
+from ase import Atoms
+from ase.calculators.tip3p import TIP3P, angleHOH, rOH
+from ase.constraints import FixBondLengths
+from ase.io.trajectory import Trajectory
+from ase.md import Langevin
 
-# Use Asap for a huge performance increase if it is installed
-use_asap = True
+# Set up water box at 20 deg C density
+x = angleHOH * np.pi / 180 / 2
+pos = [
+    [0, 0, 0],
+    [0, rOH * np.cos(x), rOH * np.sin(x)],
+    [0, rOH * np.cos(x), -rOH * np.sin(x)],
+]
+atoms = Atoms('OH2', positions=pos)
 
-if use_asap:
-    from asap3 import EMT
+vol = ((18.01528 / 6.022140857e23) / (0.9982 / 1e24)) ** (1 / 3.0)
+atoms.set_cell((vol, vol, vol))
+atoms.center()
 
-    size = 10
-else:
-    from ase.calculators.emt import EMT
+atoms = atoms.repeat((3, 3, 3))
+atoms.set_pbc(True)
 
-    size = 3
-
-# Set up a crystal
-atoms = FaceCenteredCubic(
-    directions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-    symbol='Cu',
-    size=(size, size, size),
-    pbc=True,
+# RATTLE-type constraints on O-H1, O-H2, H1-H2.
+atoms.constraints = FixBondLengths(
+    [(3 * i + j, 3 * i + (j + 1) % 3) for i in range(3**3) for j in [0, 1, 2]]
 )
 
-# Describe the interatomic interactions with the Effective Medium Theory
-atoms.calc = EMT()
+tag = 'tip3p_27mol_equil'
+atoms.calc = TIP3P(rc=4.5)
+md = Langevin(
+    atoms,
+    1 * units.fs,
+    temperature_K=300,
+    friction=0.01,
+    logfile=tag + '.log',
+)
 
-# Set the momenta corresponding to T=300K
-MaxwellBoltzmannDistribution(atoms, temperature_K=300)
+traj = Trajectory(tag + '.traj', 'w', atoms)
+md.attach(traj.write, interval=1)
+md.run(100)
 
-# We want to run MD with constant energy using the VelocityVerlet algorithm.
-dyn = VelocityVerlet(atoms, 5 * units.fs)  # 5 fs time step.
+# Repeat box and equilibrate further.
+tag = 'tip3p_216mol_equil'
+atoms.set_constraint()  # repeat not compatible with FixBondLengths currently.
+atoms = atoms.repeat((2, 2, 2))
+atoms.constraints = FixBondLengths(
+    [
+        (3 * i + j, 3 * i + (j + 1) % 3)
+        for i in range(int(len(atoms) / 3))
+        for j in [0, 1, 2]
+    ]
+)
+atoms.calc = TIP3P(rc=7.0)
+md = Langevin(
+    atoms,
+    2 * units.fs,
+    temperature_K=300,
+    friction=0.01,
+    logfile=tag + '.log',
+)
 
 
-def printenergy(a=atoms):  # store a reference to atoms in the definition.
-    """Function to print the potential, kinetic and total energy."""
-    epot = a.get_potential_energy() / len(a)
-    ekin = a.get_kinetic_energy() / len(a)
-    print(
-        'Energy per atom: Epot = %.3feV  Ekin = %.3feV (T=%3.0fK)  '
-        'Etot = %.3feV' % (epot, ekin, ekin / (1.5 * units.kB), epot + ekin)
-    )
 
-
-# Now run the dynamics
-dyn.attach(printenergy, interval=10)
-printenergy()
-dyn.run(200)
+traj = Trajectory(tag + '.traj', 'w', atoms)
+md.attach(traj.write, interval=1)
+md.run(100)
