@@ -65,7 +65,6 @@ class BPModel(nn.Module):
             str(z): AtomicNet(self.dim_in, hidden) for z in self.elements
         })
 
-    # ---------- YOUR symmetry functions (NumPy) ----------
 
     def cutoff_function_np(self, r_ij):
         r_ij = np.asarray(r_ij)
@@ -209,15 +208,6 @@ for ep in range(epochs):
 # -------------------------------------------------------
 xs = range(epochs)
 
-# Loss curves (linear scale)
-plt.figure(figsize=(8,5))
-plt.plot(xs, train_curve, label="Train loss")
-plt.plot(xs, test_curve,  label="Test loss")
-plt.xlabel("Epoch"); plt.ylabel("MSE loss")
-plt.title("Training & Test Loss")
-plt.legend(); plt.grid(True); plt.tight_layout()
-plt.show()
-
 # Loss curves (log scale) - helpful when early loss is huge
 plt.figure(figsize=(8,5))
 plt.semilogy(xs, np.maximum(train_curve, 1e-12), label="Train (log)")
@@ -225,30 +215,4 @@ plt.semilogy(xs, np.maximum(test_curve,  1e-12), label="Test (log)")
 plt.xlabel("Epoch"); plt.ylabel("MSE loss (log)")
 plt.title("Training & Test Loss (log-scale)")
 plt.legend(); plt.grid(True, which="both"); plt.tight_layout()
-plt.show()
-
-# Pred vs True scatter
-def _collect_preds(dataset, model):
-    y_true, y_pred = [], []
-    model.eval()
-    with torch.inference_mode():
-        for s in dataset:
-            y_true.append(s["E"].item())
-            y_pred.append(model(s["R"], s["Z"]).item())
-    return np.array(y_true), np.array(y_pred)
-
-ytr, ptr = _collect_preds(train, model)
-yte, pte = _collect_preds(test,  model)
-
-plt.figure(figsize=(6,6))
-plt.scatter(ytr, ptr, alpha=0.8, label="Train")
-plt.scatter(yte, pte, alpha=0.8, label="Test")
-
-lo = min(ytr.min(), yte.min(), ptr.min(), pte.min())
-hi = max(ytr.max(), yte.max(), ptr.max(), pte.max())
-plt.plot([lo, hi], [lo, hi], 'r--', label="Perfect (y=x)")
-
-plt.xlabel("True Energy"); plt.ylabel("Predicted Energy")
-plt.title("Predicted vs True Energies")
-plt.legend(); plt.grid(True); plt.tight_layout()
 plt.show()
