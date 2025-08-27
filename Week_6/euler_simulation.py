@@ -8,7 +8,7 @@ def hooke_force(x, k=1.0):
     # Eq. 3 from Eq. 4: F = -k*x
     return -k * x
 
-def simulate_single_euler(T=10.0, h=0.001, k=1.0, m=1.0, x0=1.0, v0=0.0):
+def simulate_single_euler(T=500.0, h=0.001, k=1.0, m=1.0, x0=1.0, v0=0.0):
     steps = int(T/h)
     xs = np.zeros(steps+1)
     vs = np.zeros(steps+1)
@@ -38,7 +38,7 @@ def chain_forces(q, k=1.0):
     F3 = k * (q[1] - q[2])
     return np.array([F1, F2, F3])
 
-def simulate_chain_euler(T=10.0, h=0.001, k=1.0, m=1.0,
+def simulate_chain_euler(T=300, h=0.001, k=1.0, m=1.0,
                          q0=np.array([-1.0, 0.0, 1.0]), v0=np.zeros(3)):
     steps = int(T/h)
     qs = np.zeros((steps+1, 3))
