@@ -1,7 +1,3 @@
-# chain_verlet_sideways.py
-# Three-particle mass-spring chain integrated with VERLET (Eq. 5 + Eq. 14).
-# Side-to-side animation where x-positions = q_i(t). Saves MP4 only (needs ffmpeg).
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter

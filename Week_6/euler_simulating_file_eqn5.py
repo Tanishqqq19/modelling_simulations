@@ -1,14 +1,8 @@
-# chain_sideways.py
-# Three-particle mass-spring chain integrated with Euler.
-# Side-to-side animation (x = q_i(t)); saves MP4 only.
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
-# ---------- physics ----------
 def chain_forces(q, k=1.0):
-    # linear springs between neighbors
     F1 = k * (q[1] - q[0])
     F2 = k * (q[0] - 2.0*q[1] + q[2])
     F3 = k * (q[1] - q[2])
@@ -28,18 +22,16 @@ def simulate_chain_euler(T=20.0, h=0.01, k=1.0, m=1.0,
     ts = np.linspace(0.0, T, steps + 1)
     return qs, vs, ts
 
-# ---------- params you’ll tweak ----------
 T = 20.0         # physics time (seconds)
 h = 0.01         # time step
-k = 4.0          # stiffer -> faster oscillations (omega ~ sqrt(k/m))
+k = 4.0          
 m = 1.0
 q0 = np.array([-1.0, 0.0, 1.0])
 v0 = np.zeros(3)
 
 fps = 60         # video playback fps
-frame_step = 5   # <-- increase this to shorten video / speed up playback (e.g., 5 => ~5x)
+frame_step = 5   # increase this to shorten video / speed up playback 
 
-# ---------- simulate ----------
 qs, vs, ts = simulate_chain_euler(T=T, h=h, k=k, m=m, q0=q0, v0=v0)
 
 # axis limits from data
@@ -56,7 +48,6 @@ ax.set_xlabel("x")
 ax.set_yticks([])
 ax.set_title("Three-Particle Chain (Euler) — Sideways Motion")
 
-# springs between neighbors (lines), and the 3 masses
 spring12, = ax.plot([], [], lw=2, alpha=0.6)
 spring23, = ax.plot([], [], lw=2, alpha=0.6)
 m1, = ax.plot([], [], "o", markersize=9, label="q1")
@@ -73,11 +64,9 @@ def init():
 
 def update(i):
     q1, q2, q3 = qs[i]
-    # masses (x varies; y fixed rows)
     m1.set_data([q1], [y1])
     m2.set_data([q2], [y2])
     m3.set_data([q3], [y3])
-    # springs (lines between neighbors)
     spring12.set_data([q1, q2], [y1, y2])
     spring23.set_data([q2, q3], [y2, y3])
     return spring12, spring23, m1, m2, m3
