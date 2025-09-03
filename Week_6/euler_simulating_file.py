@@ -25,7 +25,7 @@ def simulate_single_euler(T=30.0, h=0.005, k=1.0, m=1.0, x0=1.0, v0=0.0):
 # T,h,k,m,x0,v0 set the physical system
 
 T = 30.0    # total simulated physical time (seconds). How long the motion runs.
-h = 0.005   # time step (seconds). The increment between simulation updates
+h = 0.0025   # time step (seconds). The increment between simulation updates
 k = 25.0    # sping constant
 m = 1.0     # mass
 x0 = 1.0    # initial position

@@ -8,7 +8,7 @@ def hooke_force(x, k=1.0):
     # Eq. 3 from Eq. 4: F = -k*x
     return -k * x
 
-def simulate_single_euler(T=500.0, h=0.001, k=1.0, m=1.0, x0=1.0, v0=0.0):
+def simulate_single_euler(T=500.0, h=0.00005, k=1.0, m=1.0, x0=1.0, v0=0.0):
     steps = int(T/h)
     xs = np.zeros(steps+1)
     vs = np.zeros(steps+1)
