@@ -54,15 +54,18 @@ for step in range(int(steps)):
     time.append(time[-1]+ increment)
 
 
+print(len(positions))
+print(len(time))
+
 
 plt.figure(figsize=(8,4))
+
 plt.plot(time, positions, label="x(t)")
 plt.xlabel("time")
 plt.ylabel("x(t)")
-plt.title("Eq. 4 + 11: Single particle Euler")
+plt.title("Single particle Euler")
 plt.legend()
 plt.grid(True)
-plt.tight_layout()
 plt.savefig("./Week_7/single_particle_euler.png")
 
 
