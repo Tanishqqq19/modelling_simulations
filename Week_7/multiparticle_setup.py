@@ -37,7 +37,7 @@ def eqn12(m,v,h,f):
 
 
 
-total_time=0.5
+total_time=5
 h=0.001
 k=25.0
 m=1.0
@@ -58,9 +58,6 @@ for i in range(steps):
     xs_hist.append(x[:])
     time.append(time[-1] + h)
 
-# print(time)
-# print(xs_hist)
-
 
 
 num_particles = 6
@@ -75,10 +72,11 @@ for i in range(num_particles):
 plt.figure(figsize=(9,4.5))
 for i in range(num_particles):
     plt.plot(time, trajectories[i], label=f"x{i+1}(t)")
+
+
 plt.xlabel("time (s)")
 plt.ylabel("position x (t)")
-plt.xlim(0, 1)   # tight around the cluster
-
+plt.xlim(0, 6)   # tight around the cluster
 plt.title("6-Particle Chain")
 plt.legend(loc="upper right", ncol=2, fontsize=8)
 plt.grid(True)
@@ -91,7 +89,7 @@ plt.show()
 fig, ax = plt.subplots()
 scat = ax.scatter([], [], s=80)
 
-ax.set_xlim(-1.5, 2.0)   # zoomed but fixed
+ax.set_xlim(-10, 10)   # zoomed but fixed
 ax.set_ylim(-0.2, 0.2)   # thin band
 ax.set_yticks([])
 
@@ -103,7 +101,7 @@ def update(frame):
     xs = xs_hist[frame]
     ys = [0] * len(xs)
     scat.set_offsets(np.c_[xs, ys])
-    return scat,
+    return scat
 
 ani = animation.FuncAnimation(fig, update, frames=len(xs_hist),
                               init_func=init, blit=True, interval=20)
