@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import pandas as pd
+import matplotlib.animation as animation
 
 # def eqn4(position, k):
 #     r_eq=0.0
@@ -63,4 +63,31 @@ plt.title("Eq. 4 + 11: Single particle Euler")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+plt.savefig("./Week_7/single_particle_euler.png")
+
+
+
+
+
+
+
+# fig, ax = plt.subplots()
+# (line,) = ax.plot([], [], "o")
+# ax.set_xlim(min(positions) - 0.5, max(positions) + 0.5)
+# ax.set_ylim(-0.2, 0.2)
+
+# def init():
+#     line.set_data([], [])
+#     return (line,)
+
+# def update(i):
+#     line.set_data([positions[i]], [0.0])  # wrap in [] so it's a sequence
+#     return (line,)
+
+# ani = animation.FuncAnimation(
+#     fig, update, init_func=init,
+#     frames=len(positions), blit=True
+# )
+
+# # Save as mp4
+# ani.save("single_particle_euler.mp4", writer=animation.FFMpegWriter(fps=60))

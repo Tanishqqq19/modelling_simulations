@@ -67,7 +67,6 @@ for i in range(num_particles):
     trajectories.append(series)
 
 
-# --- Plot all 6 particle positions vs time ---
 plt.figure(figsize=(9,4.5))
 for i in range(num_particles):
     plt.plot(time, trajectories[i], label=f"x{i+1}(t)")
@@ -77,5 +76,6 @@ plt.title("6-Particle Chain (Euler) — Positions vs Time")
 plt.legend(loc="upper right", ncol=2, fontsize=8)
 plt.grid(True)
 plt.tight_layout()
+plt.savefig("./Week_7/multi_particle_euler.png")
 plt.show()
 
