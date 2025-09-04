@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 
-def eqn5(x,k,d,v_min):
-    v=0
-    for i in range(len(x)-1):
-        v+= 0.5 * k * (x[i+1] -x[i]-d)**2
+# def eqn5(x,k,d,v_min):
+#     v=0
+#     for i in range(len(x)-1):
+#         v+= 0.5 * k * (x[i+1] -x[i]-d)**2
 
-    return v+v_min
+#     return v+v_min
 
 def eqn6(x,k,d):
     num_of_particles = len(x)
@@ -40,7 +40,7 @@ m=1.0
 d=1.0
 
 x = [i*d for i in range(6)]
-v = [0.0, 0.0, 0.0, 0.5, 0.5, 0.5]
+v = [0.0, 0.0, 0.5, -0.5, 0, 0]
 
 steps = int(total_time / h)
 time = [0.0]
@@ -53,13 +53,19 @@ for _ in range(steps):
     xs_hist.append(x[:])
     time.append(time[-1] + h)
 
-print(time)
-print(xs_hist)
+# print(time)
+# print(xs_hist)
 
 
 
 num_particles = 6
-trajectories = [[snapshot[i] for snapshot in xs_hist] for i in range(num_particles)]
+trajectories = []
+for i in range(num_particles):
+    series = []
+    for snapshot in xs_hist:
+        series.append(snapshot[i])
+    trajectories.append(series)
+
 
 # --- Plot all 6 particle positions vs time ---
 plt.figure(figsize=(9,4.5))

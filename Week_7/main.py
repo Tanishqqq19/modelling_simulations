@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def eqn4(position, k):
-    r_eq=0.0
-    v_min=0.0
+# def eqn4(position, k):
+#     r_eq=0.0
+#     v_min=0.0
 
-    return 0.5 * k * (position - r_eq)**2 + v_min
+#     return 0.5 * k * (position - r_eq)**2 + v_min
+
 
 # Euler integration does not work with energy potentials
 # It needs force. This is seen in eq 3
