@@ -37,14 +37,15 @@ def eqn12(m,v,h,f):
 
 
 
-total_time=5
-h=0.001
+total_time=3
+h=0.01
 k=25.0
 m=1.0
-d=1.0
+d=0.1
 
 x = [-0.2, -0.1, 0.0, 0.1, 0.2, 0.3]
-v = [-0.2, -0.1, -0.1, 0.1, 0.2, 0.2]
+# v = [-0.2, -0.1, -0.1, 0.1, 0.2, 0.2]
+v=[0.1,0.1,0.1,0.1,0.1,0.1]
 
 steps = int(total_time / h)
 time = [0.0]
@@ -76,7 +77,7 @@ for i in range(num_particles):
 
 plt.xlabel("time (s)")
 plt.ylabel("position x (t)")
-plt.xlim(0, 6)   # tight around the cluster
+plt.xlim(0, 6)   
 plt.title("6-Particle Chain")
 plt.legend(loc="upper right", ncol=2, fontsize=8)
 plt.grid(True)
@@ -89,21 +90,21 @@ plt.show()
 fig, ax = plt.subplots()
 scat = ax.scatter([], [], s=80)
 
-ax.set_xlim(-10, 10)   # zoomed but fixed
-ax.set_ylim(-0.2, 0.2)   # thin band
+ax.set_xlim(-1, 1)   
+ax.set_ylim(-0.2, 0.2)  
 ax.set_yticks([])
 
 def init():
     scat.set_offsets(np.empty((0, 2)))
-    return scat,
+    return (scat,)
 
 def update(frame):
     xs = xs_hist[frame]
     ys = [0] * len(xs)
     scat.set_offsets(np.c_[xs, ys])
-    return scat
+    return (scat,)
 
 ani = animation.FuncAnimation(fig, update, frames=len(xs_hist),
                               init_func=init, blit=True, interval=20)
 
-ani.save("./Week_7/harmonic_chain.mp4", writer="ffmpeg", fps=30)
+ani.save("./Week_7/harmonic_chain_2.mp4", writer="ffmpeg", fps=30)
