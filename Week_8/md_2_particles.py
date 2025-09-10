@@ -2,13 +2,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
-# def eqn5(x,k,d,v_min):
-#     v=0
-#     for i in range(len(x)-1):
-#         v+= 0.5 * k * (x[i+1] -x[i]-d)**2
-
-#     return v+v_min
-
 def eqn6(x,k,d):
     num_of_particles = len(x)
     f= [0.0] * num_of_particles
@@ -33,9 +26,6 @@ def eqn12(m,v,h,f):
     for i in range(len(v)):
         new_v.append(v[i]+h*(f[i] / m))
     return new_v
-
-
-
 
 total_time=3
 h=0.01
@@ -77,7 +67,7 @@ for i in range(num_particles):
 plt.xlabel("time (s)")
 plt.ylabel("position x (t)")
 plt.xlim(0, 6)   
-plt.title("6-Particle Chain")
+plt.title("2-Particle Chain")
 plt.legend(loc="upper right", ncol=2, fontsize=8)
 plt.grid(True)
 plt.tight_layout()
