@@ -59,6 +59,26 @@ for i in range(num_particles):
     trajectories.append(series)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 plt.figure(figsize=(9,4.5))
 for i in range(num_particles):
     plt.plot(time, trajectories[i], label=f"x{i+1}(t)")
