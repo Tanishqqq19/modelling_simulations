@@ -1,6 +1,19 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import random
+
+import csv, os   # NEW
+os.makedirs("./Week_8", exist_ok=True)  # NEW (so the save path works)
+
+
+def eqn5(x,k,d,v_min):
+    v=0
+    for i in range(len(x)-1):
+        v+= 0.5 * k * (x[i+1] -x[i]-d)**2
+
+    return v+v_min
+
 
 def eqn6(x,k,d):
     num_of_particles = len(x)
@@ -27,8 +40,8 @@ def eqn12(m,v,h,f):
         new_v.append(v[i]+h*(f[i] / m))
     return new_v
 
-total_time=3
-h=0.01
+total_time=60
+h=0.001
 k=25.0
 m=1.0
 d=0.1
@@ -39,6 +52,7 @@ v = [0.1, 0.1]
 steps = int(total_time / h)
 time = [0.0]
 xs_hist = [x[:]]
+vs_hist = [v[:]]
 
 for i in range(steps):
     f = eqn6(x, k, d)
@@ -46,37 +60,54 @@ for i in range(steps):
     v = eqn12(m, v, h, f)
 
     xs_hist.append(x[:])
+    vs_hist.append(v[:])
     time.append(time[-1] + h)
 
+snapshot_every = 5.0
+n_snaps = int(round(total_time / snapshot_every)) + 1
+snapshot_times = [i * snapshot_every for i in range(n_snaps)]
 
+n = len(xs_hist[0])
+v_min = 0.0
 
-num_particles = 2
+snapshots_target = 2000
+snapshots_written = 0
+run_id = 0
+
+while snapshots_written < snapshots_target:
+    d = random.uniform(0.05, 0.20)
+    x = [-0.2, -0.1, 0.0, 0.1, 0.2, 0.3]
+    v = [random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)]
+
+    xs_hist = [x[:]]
+    vs_hist = [v[:]]
+    for _ in range(steps):
+        f = eqn6(x, k, d)
+        x = eqn11(x, v, h)
+        v = eqn12(m, v, h, f)
+        xs_hist.append(x[:])
+        vs_hist.append(v[:])
+
+    with open("./harmonic_chain_6particles.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        for t in snapshot_times:
+            if snapshots_written >= snapshots_target:
+                break
+            idx = int(round(t / h))
+            xs = xs_hist[idx]
+            E_eq5 = eqn5(xs, k, d, v_min)
+            writer.writerow([t, n, E_eq5, xs[0], xs[1]])
+            snapshots_written += 1
+
+    run_id += 1
+
+num_particles = 3
 trajectories = []
 for i in range(num_particles):
     series = []
     for snapshot in xs_hist:
         series.append(snapshot[i])
     trajectories.append(series)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 plt.figure(figsize=(9,4.5))
@@ -91,8 +122,8 @@ plt.title("2-Particle Chain")
 plt.legend(loc="upper right", ncol=2, fontsize=8)
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("./Week_8/2_particle_euler.png")
-plt.show()
+# plt.savefig("./Week_8/2_particle_euler.png")
+# plt.show()
 
 
 
@@ -113,7 +144,6 @@ def update(frame):
     scat.set_offsets(np.c_[xs, ys])
     return (scat,)
 
-ani = animation.FuncAnimation(fig, update, frames=len(xs_hist),
-                              init_func=init, blit=True, interval=20)
+# ani = animation.FuncAnimation(fig, update, frames=len(xs_hist),init_func=init, blit=True, interval=20)
 
-ani.save("./Week_8/harmonic_chain.mp4", writer="ffmpeg", fps=30)
+# ani.save("./Week_8/harmonic_chain.mp4", writer="ffmpeg", fps=30)
