@@ -4,7 +4,7 @@ import numpy as np
 import random
 
 import csv, os   # NEW
-os.makedirs("./Week_8", exist_ok=True)  # NEW (so the save path works)
+# os.makedirs("./Week_8", exist_ok=True)  # NEW (so the save path works)
 
 
 def eqn5(x,k,d,v_min):
@@ -70,14 +70,21 @@ snapshot_times = [i * snapshot_every for i in range(n_snaps)]
 n = len(xs_hist[0])
 v_min = 0.0
 
+
+
+
+
+
+
+
 snapshots_target = 2000
 snapshots_written = 0
 run_id = 0
 
 while snapshots_written < snapshots_target:
     d = random.uniform(0.05, 0.20)
-    x = [-0.2, -0.1, 0.0, 0.1, 0.2, 0.3]
-    v = [random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)]
+    x = [-0.2, -0.1]
+    v = [random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)]
 
     xs_hist = [x[:]]
     vs_hist = [v[:]]
@@ -88,18 +95,25 @@ while snapshots_written < snapshots_target:
         xs_hist.append(x[:])
         vs_hist.append(v[:])
 
-    with open("./harmonic_chain_6particles.csv", "a", newline="") as f:
+    with open("./Week_8/harmonic_chain_2particles.csv", "a", newline="") as f:
         writer = csv.writer(f)
         for t in snapshot_times:
             if snapshots_written >= snapshots_target:
                 break
-            idx = int(round(t / h))
-            xs = xs_hist[idx]
-            E_eq5 = eqn5(xs, k, d, v_min)
-            writer.writerow([t, n, E_eq5, xs[0], xs[1]])
+            index = int(round(t / h))
+            x1 = xs_hist[index]
+            E_eq5 = eqn5(x1, k, d, v_min)
+            writer.writerow([t, n, E_eq5, x1[0], x1[1]])
             snapshots_written += 1
 
     run_id += 1
+
+
+
+
+
+
+
 
 num_particles = 3
 trajectories = []

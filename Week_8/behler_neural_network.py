@@ -15,9 +15,6 @@ def cutoff_cos(r, Rc):
     return 0.5*(math.cos(math.pi * r / Rc) + 1.0)
 
 
-
-
-
 def distance(a, b):
     return math.sqrt(sum((ai - bi)**2 for ai, bi in zip(a, b)))
 
@@ -106,6 +103,36 @@ class AtomicNetwork:
 
         energy_i=sum(w * h for w, h in zip(self.weights_hidden_output, hidden_activations)) + self.bias_output
         return energy_i
+    
+
+
+    def backward_and_update(self, cache, dL_dy, lr):
+        # output layer grads
+        h = cache["h"]
+        dW2 = [dL_dy * hj for hj in h]
+        db2 = dL_dy
+
+        # backprop to hidden
+        dL_dh  = [dL_dy * w2 for w2 in self.weights_hidden_output]
+        dL_dz1 = [dh * (1.0 - (hj * hj)) for dh, hj in zip(dL_dh, h)]  # tanh' = 1 - tanh^2
+
+        # input -> hidden grads
+        x = cache["x"]
+        dW1 = [[dz * xi for xi in x] for dz in dL_dz1]
+        db1 = dL_dz1
+
+        # SGD update
+        for j in range(len(self.weights_hidden_output)):
+            self.weights_hidden_output[j] -= lr * dW2[j]
+        self.bias_output -= lr * db2
+
+        for j in range(len(self.weights_input_hidden)):
+            row = self.weights_input_hidden[j]
+            for i in range(len(row)):
+                row[i] -= lr * dW1[j][i]
+            self.bias_hidden[j] -= lr * db1[j]
+
+
 
 
 class BehlerParrinelloModel:
@@ -114,19 +141,46 @@ class BehlerParrinelloModel:
 
     def forward(self, coordinates, atomic_numbers):
         """
-        coordinates: list of [x,y,z] positions for atoms
-        atomic_numbers: list of atomic numbers (e.g. [8,1,1] for water)
+        coordinates: list[[x,y,z], ...]  (Å)
+        atomic_numbers: list[int]
+        returns: total_energy (float), per_atom (list[float]), caches (list[(Z, cache)])
         """
-        # step 1: build symmetry functions (G1, G2 per atom)
-        feature_vectors = symmetry_functions(coordinates)  # [[G1,G2], ...]
-        
-        # step 2: predict atomic energies with element-specific nets
-        atomic_energies = []
+        features = symmetry_functions(coordinates)  # uses your paper-accurate G1/G2 + cutoff
+        per_atom = []
+        caches = []
         for idx, Z in enumerate(atomic_numbers):
-            net = self.atomic_nets[Z]
-            E_i = net.forward(feature_vectors[idx])
-            atomic_energies.append(E_i)
+            net = self.atomic_nets[int(Z)]
+            e_i, cache = net.forward(features[idx])
+            per_atom.append(e_i)
+            caches.append((int(Z), cache))
+        return sum(per_atom), per_atom, caches
 
-        # step 3: total energy = sum of atomic energies
-        total_energy = sum(atomic_energies)
-        return total_energy, atomic_energies
+    def train_one(self, coordinates, atomic_numbers, energy_ref, lr):
+        # forward
+        E_pred, per_atom, caches = self.forward(coordinates, atomic_numbers)
+        # paper: minimize energy error (squared)
+        diff = E_pred - energy_ref
+        loss = 0.5 * diff * diff
+        # dL/dE_total = (E_pred - E_ref); and since E_total = sum_i E_i, dE_total/dE_i = 1
+        dL_dEtotal = diff
+        for (Z, cache) in caches:
+            self.atomic_nets[Z].backward_and_update(cache, dL_dEtotal, lr)
+        return E_pred, loss
+
+
+# -------- minimal trainer (expects pure-python data) --------
+def train_bp(model, dataset, epochs=10, lr=1e-3, verbose_every=1):
+    """
+    dataset: list of dicts with *pure python* values:
+      {"R": [[x,y,z], ...], "Z": [int,...], "E": float}
+    """
+    for ep in range(1, epochs + 1):
+        total_loss = 0.0
+        for s in dataset:
+            R = s["R"]                      # list[[x,y,z], ...]
+            Z = [int(z) for z in s["Z"]]    # list[int]
+            E_ref = float(s["E"])           # float
+            _, loss = model.train_one(R, Z, E_ref, lr)
+            total_loss += loss
+        if ep % verbose_every == 0:
+            print(f"epoch {ep:4d} | mean loss {total_loss / max(1, len(dataset)):.6f}")
