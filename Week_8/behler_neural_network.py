@@ -22,7 +22,7 @@ def dot(u, v):
 def norm(u):
     return math.sqrt(dot(u,u))
 
-def G1_single(R, Rc, eta, Rs):
+def G1_single(R, Rc, eta, Rs): # Radial Function
     n = len(R)
     out = []
     for i in range(n):
@@ -36,7 +36,7 @@ def G1_single(R, Rc, eta, Rs):
         out.append(total)
     return out
 
-def G2_single(R, Rc, eta, zeta, lam):
+def G2_single(R, Rc, eta, zeta, lam): # Angular Function
     N = len(R)
     out = []
     for i in range(N):
@@ -62,17 +62,19 @@ def G2_single(R, Rc, eta, zeta, lam):
         out.append(total)
     return out
 
-def symmetry_functions(R):
+def symmetry_functions(R): # Each particle is represented by symmetry functions. This simplifies the process.
     g1 = G1_single(R, Rc, eta_G1, Rs_G1)
     g2 = G2_single(R, Rc, eta_G2, zeta_G2, lambda_G2)
     return [[g1[i], g2[i]] for i in range(len(R))]
 
 class AtomicNetwork:
-    def __init__(self, num_inputs, num_hidden):
-        self.input_to_hidden_weights = [
+    def __init__(self, num_inputs, num_hidden):  # Eqn 1 is being coded out here
+        
+        self.input_to_hidden_weights=[
             [random.uniform(-0.1, 0.1) for _ in range(num_inputs)]
             for _ in range(num_hidden)
         ]
+        
         self.hidden_biases = [0.0 for _ in range(num_hidden)]
         self.hidden_to_output_weights = [
             random.uniform(-0.1, 0.1) for _ in range(num_hidden)
@@ -83,19 +85,27 @@ class AtomicNetwork:
         hidden_linear = []
         hidden_activation = []
         for j in range(len(self.input_to_hidden_weights)):
-            linear_sum = sum(w * x for w, x in zip(self.input_to_hidden_weights[j], symmetry_vector)) + self.hidden_biases[j]
+            
+            linear_sum = sum(w*x for w,x in zip(self.input_to_hidden_weights[j], symmetry_vector))+self.hidden_biases[j]
+            
             hidden_linear.append(linear_sum)
+            
             hidden_activation.append(math.tanh(linear_sum))
-        atomic_energy = sum(w * h for w, h in zip(self.hidden_to_output_weights, hidden_activation)) + self.output_bias
+        
+        
+        atomic_energy = sum(w*h for w,h in zip(self.hidden_to_output_weights, hidden_activation))+self.output_bias
+        
         cache = {
-            "inputs": symmetry_vector,
-            "hidden_linear": hidden_linear,
-            "hidden_activation": hidden_activation,
-            "output": atomic_energy
+            "inputs":symmetry_vector,
+            "hidden_linear":hidden_linear,
+            "hidden_activation":hidden_activation,
+            "output":atomic_energy
         }
-        return atomic_energy, cache
+        
+        return atomic_energy,cache
 
-    def backward_and_update(self, cache, dL_d_output, learning_rate):
+    def backward_and_update(self, cache, dL_d_output, learning_rate): # Eqn 14
+        # This is basically coding out all the four derivative equations.
         hidden_activation = cache["hidden_activation"]
         dW_output = [dL_d_output * h for h in hidden_activation]
         db_output = dL_d_output
@@ -113,10 +123,12 @@ class AtomicNetwork:
             self.hidden_biases[j] -= learning_rate * db_hidden[j]
 
 class BehlerParrinelloModel:
-    def __init__(self, element_types, num_inputs=2, num_hidden=5):
+
+    def __init__(self, element_types, num_inputs=2, num_hidden=5): 
+        # This basically creates a neural network for each one of its elements.
         self.atomic_nets = {element: AtomicNetwork(num_inputs, num_hidden) for element in element_types}
 
-    def forward(self, coordinates, atomic_numbers):
+    def forward(self, coordinates, atomic_numbers): # This maps to Eqn 12
         features = symmetry_functions(coordinates)
         per_atom = []
         caches = []
@@ -128,6 +140,8 @@ class BehlerParrinelloModel:
         return sum(per_atom), per_atom, caches
 
     def train_one(self, coordinates, atomic_numbers, energy_ref, lr):
+        # This basically follows the error function equation. Eqn 14.
+
         E_pred, per_atom, caches = self.forward(coordinates, atomic_numbers)
         diff = E_pred - energy_ref
         loss = 0.5 * diff * diff
@@ -137,9 +151,10 @@ class BehlerParrinelloModel:
         return E_pred, loss
 
 def train_bp(model, dataset, epochs=10, lr=1e-3, verbose_every=1):
+    #This basically loops over training samples and finds the averaged square error
     for ep in range(1, epochs + 1):
         total_loss = 0.0
-        for s in dataset:
+        for s in dataset: 
             R = s["R"]
             Z = [int(z) for z in s["Z"]]
             E_ref = float(s["E"])
@@ -221,4 +236,5 @@ plt.ylabel("MSE Loss")
 plt.title("Training vs Test Curves")
 plt.legend()
 plt.grid(True)
+plt.savefig("./loss_learn_curves.png")
 plt.show()
