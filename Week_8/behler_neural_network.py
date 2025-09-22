@@ -71,13 +71,13 @@ class AtomicNetwork:
     def __init__(self, num_inputs, num_hidden):  # Eqn 1 is being coded out here
         
         self.input_to_hidden_weights=[
-            [random.uniform(-0.1, 0.1) for _ in range(num_inputs)]
-            for _ in range(num_hidden)
+            [random.uniform(-0.1, 0.1) for i in range(num_inputs)]
+            for i in range(num_hidden)
         ]
         
-        self.hidden_biases = [0.0 for _ in range(num_hidden)]
+        self.hidden_biases = [0.0 for i in range(num_hidden)]
         self.hidden_to_output_weights = [
-            random.uniform(-0.1, 0.1) for _ in range(num_hidden)
+            random.uniform(-0.1, 0.1) for i in range(num_hidden)
         ]
         self.output_bias = 0.0
 
@@ -114,6 +114,7 @@ class AtomicNetwork:
         inputs = cache["inputs"]
         dW_input = [[dz * x for x in inputs] for dz in dL_d_hidden_linear]
         db_hidden = dL_d_hidden_linear
+        
         for j in range(len(self.hidden_to_output_weights)):
             self.hidden_to_output_weights[j] -= learning_rate * dW_output[j]
         self.output_bias -= learning_rate * db_output
@@ -167,29 +168,40 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 train_files = [
-    "3particles.csv",
-    "./harmonic_chain_4particles.csv",
-    "./harmonic_chain_5particles.csv",
-    "./harmonic_chain_2particles.csv"
+    # "./3particles.csv",
+    # "./harmonic_chain_5particles.csv",
+    "./harmonic_chain_2particles.csv",
+    # "./harmonic_chain_6particles.csv",
+    # "./harmonic_chain_4particles.csv",
 ]
-test_file = "./harmonic_chain_6particles.csv"
+test_file = ""
 
-train_samples = []
+all_samples = []
 for f in train_files:
-    df = pd.read_csv(f, header=None, nrows=3)
-    t  = df.iloc[0].tolist()
-    n  = df.iloc[1].tolist()
-    E  = df.iloc[2].tolist()
+    df = pd.read_csv(f, header=None)
+    t  = df[0].tolist()
+    n  = df[1].tolist()
+    E  = df[2].tolist()
+
     for ti, ni, Ei in zip(t, n, E):
-        train_samples.append({"x": [float(ti), float(ni)], "E": float(Ei)})
+        all_samples.append({"x": [float(ti), float(ni)], "E": float(Ei)})
 
-df = pd.read_csv(test_file, header=None, nrows=3)
-t  = df.iloc[0].tolist()
-n  = df.iloc[1].tolist()
-E  = df.iloc[2].tolist()
-test_samples = [{"x": [float(ti), float(ni)], "E": float(Ei)} for ti, ni, Ei in zip(t, n, E)]
 
-def init_direct_model(num_hidden=10):
+split_idx = int(0.8 * len(all_samples))
+
+print("Length of all  :", len(all_samples)) #
+
+
+train_samples = all_samples[:split_idx]
+test_samples  = all_samples[split_idx:]
+
+print("Length of train :", len(train_samples)) #
+print("Length of test :", len(test_samples)) #
+
+
+
+
+def init_direct_model(num_hidden=50):
     return AtomicNetwork(num_inputs=2, num_hidden=num_hidden)
 
 def forward_energy(net, x):
@@ -213,9 +225,9 @@ def evaluate(net, test_samples):
         total += diff * diff
     return total / len(test_samples)
 
-net = init_direct_model(num_hidden=10)
-epochs = 200
-lr = 1e-3
+net = init_direct_model(num_hidden=100)
+epochs = 1000
+lr = 1e-5
 
 train_curve = []
 test_curve  = []
@@ -226,15 +238,16 @@ for ep in range(1, epochs+1):
     train_curve.append(train_mse)
     test_curve.append(test_mse)
     if ep % 20 == 0:
-        print(f"epoch {ep:3d} | train MSE {train_mse:.6f} | test MSE {test_mse:.6f}")
+        print(f"epoch {ep:3d} | train MSE {train_mse:.16f} | test MSE {test_mse:.16f}")
 
 plt.figure(figsize=(8,5))
 plt.plot(range(1, epochs+1), train_curve, label="Train MSE")
 plt.plot(range(1, epochs+1), test_curve, label="Test MSE")
 plt.xlabel("Epoch")
 plt.ylabel("MSE Loss")
+# plt.yscale('log')
 plt.title("Training vs Test Curves")
 plt.legend()
 plt.grid(True)
-plt.savefig("./loss_learn_curves.png")
+plt.savefig("./loss_learn_curves_1.png")
 plt.show()

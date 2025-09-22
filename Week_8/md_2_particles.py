@@ -77,7 +77,7 @@ v_min = 0.0
 
 
 
-snapshots_target = 2000
+snapshots_target = 8000
 snapshots_written = 0
 run_id = 0
 
