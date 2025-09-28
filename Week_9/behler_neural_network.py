@@ -1,5 +1,11 @@
 import random
 import math
+import torch
+import torch.nn as nn
+import pandas as pd
+from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
+import ast 
 
 Rc=6.0        
 eta_G1=0.2
@@ -67,148 +73,111 @@ def symmetry_functions(R): # Each particle is represented by symmetry functions.
     g2 = G2_single(R, Rc, eta_G2, zeta_G2, lambda_G2)
     return [[g1[i], g2[i]] for i in range(len(R))]
 
-class AtomicNetwork:
-    def __init__(self, num_inputs, num_hidden):  # Eqn 1 is being coded out here
+class AtomicNetwork(torch.nn.Module):
+    def __init__(self, num_inputs=2, hidden_size=15): 
+        super().__init__()
         
-        self.input_to_hidden_weights=[
-            [random.uniform(-0.1, 0.1) for i in range(num_inputs)]
-            for i in range(num_hidden)
-        ]
-        
-        self.hidden_biases = [0.0 for i in range(num_hidden)]
-        self.hidden_to_output_weights = [
-            random.uniform(-0.1, 0.1) for i in range(num_hidden)
-        ]
-        self.output_bias = 0.0
-
-    def forward(self, symmetry_vector):
-        hidden_linear = []
-        hidden_activation = []
-        for j in range(len(self.input_to_hidden_weights)):
-            
-            linear_sum = sum(w*x for w,x in zip(self.input_to_hidden_weights[j], symmetry_vector))+self.hidden_biases[j]
-            
-            hidden_linear.append(linear_sum)
-            
-            hidden_activation.append(math.tanh(linear_sum))
-        
-        
-        atomic_energy = sum(w*h for w,h in zip(self.hidden_to_output_weights, hidden_activation))+self.output_bias
-        
-        cache = {
-            "inputs":symmetry_vector,
-            "hidden_linear":hidden_linear,
-            "hidden_activation":hidden_activation,
-            "output":atomic_energy
-        }
-        
-        return atomic_energy,cache
-
-    def backward_and_update(self, cache, dL_d_output, learning_rate): # Eqn 14
-        # This is basically coding out all the four derivative equations.
-        hidden_activation = cache["hidden_activation"]
-        dW_output = [dL_d_output * h for h in hidden_activation]
-        db_output = dL_d_output
-        dL_d_hidden_activation = [dL_d_output * w for w in self.hidden_to_output_weights]
-        dL_d_hidden_linear = [dh * (1.0 - (h * h)) for dh, h in zip(dL_d_hidden_activation, hidden_activation)]
-        inputs = cache["inputs"]
-        dW_input = [[dz * x for x in inputs] for dz in dL_d_hidden_linear]
-        db_hidden = dL_d_hidden_linear
-        
-        for j in range(len(self.hidden_to_output_weights)):
-            self.hidden_to_output_weights[j] -= learning_rate * dW_output[j]
-        self.output_bias -= learning_rate * db_output
-        for j in range(len(self.input_to_hidden_weights)):
-            for i in range(len(self.input_to_hidden_weights[j])):
-                self.input_to_hidden_weights[j][i] -= learning_rate * dW_input[j][i]
-            self.hidden_biases[j] -= learning_rate * db_hidden[j]
+        self.W1 = nn.Linear(num_inputs, hidden_size)
+        self.W2 = nn.Linear(hidden_size, hidden_size)
+        self.W3 = nn.Linear(hidden_size, 1)
 
 
-import pandas as pd
-import matplotlib.pyplot as plt
+    def forward(self, x):
+        # x is a tensor
+        x = self.W1(x)
+        x = torch.tanh(x)
 
-train_files = [
-    # "./3particles.csv",
-    # "./harmonic_chain_5particles.csv",
-    # "./harmonic_chain_2particles.csv",
-    # "./harmonic_chain_6particles.csv",
-    # "./harmonic_chain_4particles.csv",
-    "./Week_8/simulation_data_2_particles.csv"
-]
-test_file = ""
-import ast
+        x = self.W2(x)
+        x = torch.tanh(x)
 
-all_samples = []
-for f in train_files:
-    df = pd.read_csv(f)
+        x = self.W3(x)
 
-    # t  = df[0].tolist()
-    # n  = df[1].tolist()
-    # E  = df[2].tolist()
-
-    x = df['x'].tolist()
-    # TODO: replace with V
-    E = df['V'].tolist()
-
-    for xi, Ei in zip(x, E):
-        # not using the right positions of the particles
-        all_samples.append({"x": ast.literal_eval(xi), "E": float(Ei)})
-        # all_samples.append()
-
-# TODO: remove this and simplify 
-all_samples = all_samples[:2000]
-
-split_idx = int(0.8 * len(all_samples))
-
-print("Length of all  :", len(all_samples)) #
+        return x
 
 
-train_samples = all_samples[:split_idx]
-test_samples  = all_samples[split_idx:]
+class Dataset(Dataset):
+    def __init__(self, df):
+        self.df = df
 
-print("Length of train :", len(train_samples)) #
-print("Length of test :", len(test_samples)) #
+    def __len__(self):
+        return len(self.df)
+    
+    def __getitem__(self, idx):
+        return torch.tensor(ast.literal_eval(self.df['x'].iloc[idx]), dtype=torch.float32), torch.tensor([self.df['V'].iloc[idx]], dtype=torch.float32)
 
 
-
-
-def init_direct_model(num_hidden=50):
-    return AtomicNetwork(num_inputs=2, num_hidden=num_hidden)
-
-def forward_energy(net, x):
-    return net.forward(x)
-
-def train_epoch(net, train_samples, lr):
+def train_epoch(net, optimizer, dataloader):
     total_loss = 0.0
-    for s in train_samples:
-        y_pred, cache = forward_energy(net, s["x"])
-        diff = y_pred - s["E"]
-        loss = 0.5 * diff * diff
-        net.backward_and_update(cache, dL_d_output=diff, learning_rate=lr)
-        total_loss += loss
-    return total_loss / len(train_samples)
+    loss_fn = nn.MSELoss()
+    
+    for batch in dataloader:
+        x_label, V_label = batch
+        V_pred = net(x_label)
+        loss = loss_fn(V_pred, V_label)
 
-def evaluate(net, test_samples):
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    return total_loss / len(dataloader)
+
+def evaluate(net, dataloader):
+    net.eval()
     total = 0.0
-    for s in test_samples:
-        y_pred, _ = forward_energy(net, s["x"])
-        diff = y_pred - s["E"]
-        total += diff * diff
-    return total / len(test_samples)
 
-net = init_direct_model(num_hidden=100)
-epochs = 400
-lr = 1e-4
+    loss_fn = nn.MSELoss()
+    
+    with torch.no_grad():
+        for batch in dataloader:
+            x_label, V_label = batch
+            V_pred = net(x_label)
+            loss = loss_fn(V_pred, V_label)
+            total += loss.item()
+
+    net.train()
+    return total / len(dataloader)
+
+# random.seed(0)
+# torch.manual_seed(0)
+
+fpath = "./Week_8/simulation_data_2_particles.csv"
+# fpath = "./Week_8/x1_times_x2.csv"
+df = pd.read_csv(fpath)
+df = df.iloc[:10000]
+
+split = int(len(df) * 0.8)
+
+train_df = df.iloc[:split]
+test_df = df.iloc[split:]
+print("Length of train", len(train_df))
+print("Length of test", len(test_df))
+
+net = AtomicNetwork(2, 15)
+
+train_dataset = Dataset(train_df)
+test_dataset = Dataset(test_df)
+
+train_dataloader = DataLoader(train_dataset, batch_size=32)
+test_dataloader = DataLoader(test_dataset, batch_size=32)
+
+
+lr = 1e-3
+optimizer = torch.optim.Adam(net.parameters(), lr=lr)
+
+
+epochs = 100
 
 train_curve = []
 test_curve  = []
 
 for ep in range(1, epochs+1):
-    train_mse = train_epoch(net, train_samples, lr)
-    test_mse  = evaluate(net, test_samples)
+    train_mse = train_epoch(net, optimizer, train_dataloader)
+    test_mse  = evaluate(net, test_dataloader)
     train_curve.append(train_mse)
     test_curve.append(test_mse)
-    if ep % 20 == 0:
+    if ep % 2 == 0:
         print(f"epoch {ep:3d} | train MSE {train_mse:.16f} | test MSE {test_mse:.16f}")
 
 plt.figure(figsize=(8,5))

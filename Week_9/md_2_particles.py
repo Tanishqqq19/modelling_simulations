@@ -110,11 +110,12 @@ random.seed(0)
 # V will be energy of system at time t in simulation_id si
 data = {"simulation_id":[], "time":[], "x": [], "V": []}
 
+d = 0.1
+v = [0, 0]
+
 for n in range(num_simulations):
     print("Simulating ", n)
-    d = random.uniform(0.05, 0.20)
     x = [random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)]
-    v = [random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05)]
 
     # x = [-0.1, 0.1]
     # v = [0.01, -0.01]
