@@ -72,8 +72,7 @@ def G2_single(R, Rc, eta, zeta, lam): # Angular Function
 
 
 class SymmetryFunctionLayer(nn.Module):
-    def __init__(self, Rc=6.0, eta_G1=0.2, Rs_G1=2.0,
-                 eta_G2=0.01, zeta_G2=1.0, lambda_G2=1.0):
+    def __init__(self, Rc=6.0, eta_G1=0.2, Rs_G1=2.0, eta_G2=0.01, zeta_G2=1.0, lambda_G2=1.0):
         super().__init__()
         self.Rc = Rc
         self.eta_G1 = eta_G1
@@ -82,26 +81,16 @@ class SymmetryFunctionLayer(nn.Module):
         self.zeta_G2 = zeta_G2
         self.lambda_G2 = lambda_G2
 
-    def forward(self, R):
-        # R: [batch, N_atoms, 3]
-        batch_size, N, _ = R.shape
-        out = []
-        for b in range(batch_size):
-            coords = R[b].cpu().tolist()
-            g1 = G1_single(coords, self.Rc, self.eta_G1, self.Rs_G1)
-            g2 = G2_single(coords, self.Rc, self.eta_G2, self.zeta_G2, self.lambda_G2)
-            out.append([[g1[i], g2[i]] for i in range(N)])
-        return torch.tensor(out, dtype=torch.float32, device=R.device)  # [batch, N, 2]
-
-
-def symmetry_functions(R): # Each particle is represented by symmetry functions. This simplifies the process.
-    g1 = G1_single(R, Rc, eta_G1, Rs_G1)
-    g2 = G2_single(R, Rc, eta_G2, zeta_G2, lambda_G2)
-    return [[g1[i], g2[i]] for i in range(len(R))]
-
-
-
-
+    def forward(self, R_batch):
+        # R_batch shape: (batch, 2) → [pos1, pos2]
+        feats = []
+        for R in R_batch:
+            # Convert to "atom list" form for your G1/G2 functions
+            R_np = [[R[0].item()], [R[1].item()]]  # 2 atoms in 1D
+            g1 = G1_single(R_np, self.Rc, self.eta_G1, self.Rs_G1)
+            g2 = G2_single(R_np, self.Rc, self.eta_G2, self.zeta_G2, self.lambda_G2)
+            feats.append([g1[0], g2[0]])  # features for atom 1
+        return torch.tensor(feats, dtype=torch.float32, device=R_batch.device)
 
 
 class AtomicNetwork(nn.Module):
@@ -193,7 +182,7 @@ lr = 1e-3
 optimizer = torch.optim.Adam(net.parameters(), lr=lr)
 
 
-epochs = 100
+epochs = 1000
 
 train_curve = []
 test_curve  = []
@@ -203,7 +192,7 @@ for ep in range(1, epochs+1):
     test_mse  = evaluate(net, test_dataloader)
     train_curve.append(train_mse)
     test_curve.append(test_mse)
-    if ep % 2 == 0:
+    if ep % 10 == 0:
         print(f"epoch {ep:3d} | train MSE {train_mse:.16f} | test MSE {test_mse:.16f}")
 
 plt.figure(figsize=(8,5))
