@@ -102,7 +102,7 @@ m=1.0 # mass
 d=0.1
 V_min = 0.0
 steps = int(total_time / h)
-filepath = "./Week_8/simulation_data_2_particles.csv"
+filepath = "./simulation_data_2_particles.csv"
 num_simulations = 100
 random.seed(0)
 

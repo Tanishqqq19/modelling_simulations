@@ -99,6 +99,11 @@ def symmetry_functions(R): # Each particle is represented by symmetry functions.
     g2 = G2_single(R, Rc, eta_G2, zeta_G2, lambda_G2)
     return [[g1[i], g2[i]] for i in range(len(R))]
 
+
+
+
+
+
 class AtomicNetwork(nn.Module):
     def __init__(self, num_inputs=2, hidden_size=15):
         super().__init__()
@@ -108,15 +113,11 @@ class AtomicNetwork(nn.Module):
         self.W3 = nn.Linear(hidden_size, 1)
 
     def forward(self, R):
-        # R: [batch, N_atoms, 3]
         x = self.sym_layer(R)   # compute [G1, G2]
-        x = self.W1(x)
-        x = torch.tanh(x)
-        x = self.W2(x)
-        x = torch.tanh(x)
+        x = torch.tanh(self.W1(x))
+        x = torch.tanh(self.W2(x))
         x = self.W3(x)
-        return x.sum(dim=1)     # sum over atoms → energy per system
-
+        return x
 
 class Dataset(Dataset):
     def __init__(self, df):
@@ -126,8 +127,7 @@ class Dataset(Dataset):
         return len(self.df)
     
     def __getitem__(self, idx):
-        # x already contains [G1, G2] from your CSV
-        x = torch.tensor(ast.literal_eval(self.df['x'].iloc[idx]), dtype=torch.float32)
+        x = torch.tensor(ast.literal_eval(self.df['x'].iloc[idx]), dtype=torch.float32)  
         V = torch.tensor([self.df['V'].iloc[idx]], dtype=torch.float32)
         return x, V
 
@@ -168,7 +168,7 @@ def evaluate(net, dataloader):
 # random.seed(0)
 # torch.manual_seed(0)
 
-fpath = "./Week_9/simulation_data_2_particles.csv"
+fpath = "./simulation_data_2_particles.csv"
 # fpath = "./Week_8/x1_times_x2.csv"
 df = pd.read_csv(fpath)
 df = df.iloc[:10000]
