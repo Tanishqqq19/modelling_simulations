@@ -68,31 +68,54 @@ def G2_single(R, Rc, eta, zeta, lam): # Angular Function
         out.append(total)
     return out
 
+
+
+
+class SymmetryFunctionLayer(nn.Module):
+    def __init__(self, Rc=6.0, eta_G1=0.2, Rs_G1=2.0,
+                 eta_G2=0.01, zeta_G2=1.0, lambda_G2=1.0):
+        super().__init__()
+        self.Rc = Rc
+        self.eta_G1 = eta_G1
+        self.Rs_G1 = Rs_G1
+        self.eta_G2 = eta_G2
+        self.zeta_G2 = zeta_G2
+        self.lambda_G2 = lambda_G2
+
+    def forward(self, R):
+        # R: [batch, N_atoms, 3]
+        batch_size, N, _ = R.shape
+        out = []
+        for b in range(batch_size):
+            coords = R[b].cpu().tolist()
+            g1 = G1_single(coords, self.Rc, self.eta_G1, self.Rs_G1)
+            g2 = G2_single(coords, self.Rc, self.eta_G2, self.zeta_G2, self.lambda_G2)
+            out.append([[g1[i], g2[i]] for i in range(N)])
+        return torch.tensor(out, dtype=torch.float32, device=R.device)  # [batch, N, 2]
+
+
 def symmetry_functions(R): # Each particle is represented by symmetry functions. This simplifies the process.
     g1 = G1_single(R, Rc, eta_G1, Rs_G1)
     g2 = G2_single(R, Rc, eta_G2, zeta_G2, lambda_G2)
     return [[g1[i], g2[i]] for i in range(len(R))]
 
-class AtomicNetwork(torch.nn.Module):
-    def __init__(self, num_inputs=2, hidden_size=15): 
+class AtomicNetwork(nn.Module):
+    def __init__(self, num_inputs=2, hidden_size=15):
         super().__init__()
-        
+        self.sym_layer = SymmetryFunctionLayer()
         self.W1 = nn.Linear(num_inputs, hidden_size)
         self.W2 = nn.Linear(hidden_size, hidden_size)
         self.W3 = nn.Linear(hidden_size, 1)
 
-
-    def forward(self, x):
-        # x is a tensor
+    def forward(self, R):
+        # R: [batch, N_atoms, 3]
+        x = self.sym_layer(R)   # compute [G1, G2]
         x = self.W1(x)
         x = torch.tanh(x)
-
         x = self.W2(x)
         x = torch.tanh(x)
-
         x = self.W3(x)
-
-        return x
+        return x.sum(dim=1)     # sum over atoms → energy per system
 
 
 class Dataset(Dataset):
@@ -103,7 +126,10 @@ class Dataset(Dataset):
         return len(self.df)
     
     def __getitem__(self, idx):
-        return torch.tensor(ast.literal_eval(self.df['x'].iloc[idx]), dtype=torch.float32), torch.tensor([self.df['V'].iloc[idx]], dtype=torch.float32)
+        # x already contains [G1, G2] from your CSV
+        x = torch.tensor(ast.literal_eval(self.df['x'].iloc[idx]), dtype=torch.float32)
+        V = torch.tensor([self.df['V'].iloc[idx]], dtype=torch.float32)
+        return x, V
 
 
 def train_epoch(net, optimizer, dataloader):
@@ -142,7 +168,7 @@ def evaluate(net, dataloader):
 # random.seed(0)
 # torch.manual_seed(0)
 
-fpath = "./Week_8/simulation_data_2_particles.csv"
+fpath = "./Week_9/simulation_data_2_particles.csv"
 # fpath = "./Week_8/x1_times_x2.csv"
 df = pd.read_csv(fpath)
 df = df.iloc[:10000]
