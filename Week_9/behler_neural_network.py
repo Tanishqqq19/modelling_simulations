@@ -14,6 +14,35 @@ eta_G2=0.01
 zeta_G2=1.0
 lambda_G2=1.0
 
+radial_params = [
+    {"eta": 0.02, "Rs": 0.0}, {"eta": 0.02, "Rs": 1.0}, {"eta": 0.02, "Rs": 2.0}, {"eta": 0.02, "Rs": 3.0}, {"eta": 0.02, "Rs": 4.0},
+    {"eta": 0.05, "Rs": 0.0}, {"eta": 0.05, "Rs": 1.0}, {"eta": 0.05, "Rs": 2.0}, {"eta": 0.05, "Rs": 3.0}, {"eta": 0.05, "Rs": 4.0},
+    {"eta": 0.10, "Rs": 0.0}, {"eta": 0.10, "Rs": 1.0}, {"eta": 0.10, "Rs": 2.0}, {"eta": 0.10, "Rs": 3.0}, {"eta": 0.10, "Rs": 4.0},
+    {"eta": 0.20, "Rs": 0.0}, {"eta": 0.20, "Rs": 1.0}, {"eta": 0.20, "Rs": 2.0}, {"eta": 0.20, "Rs": 3.0}, {"eta": 0.20, "Rs": 4.0},
+]
+
+# === Angular symmetry functions (24 total) ===
+# Grid: 3 etas × 4 zetas × 2 lambdas
+angular_params = [
+    # eta = 0.001
+    {"eta": 0.001, "zeta": 1, "lam":  1}, {"eta": 0.001, "zeta": 1, "lam": -1},
+    {"eta": 0.001, "zeta": 2, "lam":  1}, {"eta": 0.001, "zeta": 2, "lam": -1},
+    {"eta": 0.001, "zeta": 4, "lam":  1}, {"eta": 0.001, "zeta": 4, "lam": -1},
+    {"eta": 0.001, "zeta": 8, "lam":  1}, {"eta": 0.001, "zeta": 8, "lam": -1},
+    # eta = 0.005
+    {"eta": 0.005, "zeta": 1, "lam":  1}, {"eta": 0.005, "zeta": 1, "lam": -1},
+    {"eta": 0.005, "zeta": 2, "lam":  1}, {"eta": 0.005, "zeta": 2, "lam": -1},
+    {"eta": 0.005, "zeta": 4, "lam":  1}, {"eta": 0.005, "zeta": 4, "lam": -1},
+    {"eta": 0.005, "zeta": 8, "lam":  1}, {"eta": 0.005, "zeta": 8, "lam": -1},
+    # eta = 0.010
+    {"eta": 0.010, "zeta": 1, "lam":  1}, {"eta": 0.010, "zeta": 1, "lam": -1},
+    {"eta": 0.010, "zeta": 2, "lam":  1}, {"eta": 0.010, "zeta": 2, "lam": -1},
+    {"eta": 0.010, "zeta": 4, "lam":  1}, {"eta": 0.010, "zeta": 4, "lam": -1},
+    {"eta": 0.010, "zeta": 8, "lam":  1}, {"eta": 0.010, "zeta": 8, "lam": -1},
+]
+
+
+
 def cutoff_cos(r, Rc):
     if r > Rc:
         return 0.0
@@ -81,32 +110,68 @@ class SymmetryFunctionLayer(nn.Module):
         self.zeta_G2 = zeta_G2
         self.lambda_G2 = lambda_G2
 
+    # def forward(self, R_batch):
+    #     # R_batch shape: (batch, 2) → [pos1, pos2]
+    #     feats = []
+    #     for R in R_batch:
+    #         # Convert to "atom list" form for your G1/G2 functions
+    #         R_np = [[R[0].item()], [R[1].item()]]  # 2 atoms in 1D
+    #         g1 = G1_single(R_np, self.Rc, self.eta_G1, self.Rs_G1)
+    #         g2 = G2_single(R_np, self.Rc, self.eta_G2, self.zeta_G2, self.lambda_G2)
+    #         feats.append([g1[0], g2[0]])  # features for atom 1
+    #     return torch.tensor(feats, dtype=torch.float32, device=R_batch.device)
+
     def forward(self, R_batch):
-        # R_batch shape: (batch, 2) → [pos1, pos2]
         feats = []
         for R in R_batch:
-            # Convert to "atom list" form for your G1/G2 functions
             R_np = [[R[0].item()], [R[1].item()]]  # 2 atoms in 1D
-            g1 = G1_single(R_np, self.Rc, self.eta_G1, self.Rs_G1)
-            g2 = G2_single(R_np, self.Rc, self.eta_G2, self.zeta_G2, self.lambda_G2)
-            feats.append([g1[0], g2[0]])  # features for atom 1
+            atom_feats = []
+            for p in radial_params:
+                g1 = G1_single(R_np, Rc, p["eta"], p["Rs"])
+                atom_feats.append(g1[0])
+            for p in angular_params:
+                g2 = G2_single(R_np, Rc, p["eta"], p["zeta"], p["lam"])
+                atom_feats.append(g2[0])
+            feats.append(atom_feats)
+
         return torch.tensor(feats, dtype=torch.float32, device=R_batch.device)
+
+# class AtomicNetwork(nn.Module):
+#     def __init__(self, hidden_size=64):
+#         super().__init__()
+
+#         self.sym_layer = SymmetryFunctionLayer()
+#         num_inputs = len(radial_params) + len(angular_params)  
+#         self.W1 = nn.Linear(num_inputs, hidden_size)
+#         self.W2 = nn.Linear(hidden_size, hidden_size)
+#         self.W3 = nn.Linear(hidden_size, 1)
+
+#     def forward(self, R):
+#         x = self.sym_layer(R)   # compute [G1, G2]
+#         x = torch.tanh(self.W1(x))
+#         x = torch.tanh(self.W2(x))
+#         x = self.W3(x)
+#         return x
 
 
 class AtomicNetwork(nn.Module):
-    def __init__(self, num_inputs=2, hidden_size=15):
+    def __init__(self, hidden_size=128):
         super().__init__()
         self.sym_layer = SymmetryFunctionLayer()
+        num_inputs = len(radial_params) + len(angular_params)  # 44 here
         self.W1 = nn.Linear(num_inputs, hidden_size)
         self.W2 = nn.Linear(hidden_size, hidden_size)
-        self.W3 = nn.Linear(hidden_size, 1)
-
+        self.W3 = nn.Linear(hidden_size, hidden_size)
+        self.W4 = nn.Linear(hidden_size, 1)
     def forward(self, R):
-        x = self.sym_layer(R)   # compute [G1, G2]
+        x = self.sym_layer(R)
         x = torch.tanh(self.W1(x))
         x = torch.tanh(self.W2(x))
-        x = self.W3(x)
+        x = torch.tanh(self.W3(x))
+        x = self.W4(x)
         return x
+
+
 
 class Dataset(Dataset):
     def __init__(self, df):
@@ -158,31 +223,32 @@ def evaluate(net, dataloader):
 # torch.manual_seed(0)
 
 fpath = "./simulation_data_2_particles.csv"
-# fpath = "./Week_8/x1_times_x2.csv"
 df = pd.read_csv(fpath)
-df = df.iloc[:10000]
+df = df.iloc[:80000]
 
 split = int(len(df) * 0.8)
+df = df.sample(frac=1.0, random_state=42).reset_index(drop=True)
+
 
 train_df = df.iloc[:split]
 test_df = df.iloc[split:]
 print("Length of train", len(train_df))
 print("Length of test", len(test_df))
 
-net = AtomicNetwork(2, 15)
+net = AtomicNetwork(128)
 
 train_dataset = Dataset(train_df)
 test_dataset = Dataset(test_df)
 
-train_dataloader = DataLoader(train_dataset, batch_size=32)
-test_dataloader = DataLoader(test_dataset, batch_size=32)
+train_dataloader = DataLoader(train_dataset, batch_size=64)
+test_dataloader = DataLoader(test_dataset, batch_size=64)
 
 
-lr = 1e-3
+lr = 5e-4
 optimizer = torch.optim.Adam(net.parameters(), lr=lr)
 
 
-epochs = 1000
+epochs = 500
 
 train_curve = []
 test_curve  = []
