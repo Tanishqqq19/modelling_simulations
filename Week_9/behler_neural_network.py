@@ -7,6 +7,11 @@ from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 import ast 
 
+
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+print(f"Using device: {device}")
+
+
 Rc=6.0        
 eta_G1=0.2
 Rs_G1=2.0
@@ -162,13 +167,15 @@ class AtomicNetwork(nn.Module):
         self.W1 = nn.Linear(num_inputs, hidden_size)
         self.W2 = nn.Linear(hidden_size, hidden_size)
         self.W3 = nn.Linear(hidden_size, hidden_size)
-        self.W4 = nn.Linear(hidden_size, 1)
+        self.W4 = nn.Linear(hidden_size, hidden_size)
+        self.W5 = nn.Linear(hidden_size, 1)
     def forward(self, R):
         x = self.sym_layer(R)
         x = torch.tanh(self.W1(x))
         x = torch.tanh(self.W2(x))
         x = torch.tanh(self.W3(x))
-        x = self.W4(x)
+        x = torch.tanh(self.W4(x))
+        x = self.W5(x)
         return x
 
 
@@ -190,8 +197,16 @@ def train_epoch(net, optimizer, dataloader):
     total_loss = 0.0
     loss_fn = nn.MSELoss()
     
+    # for batch in dataloader:
+    #     x_label, V_label = batch
+    #     V_pred = net(x_label)
+    #     loss = loss_fn(V_pred, V_label)
+
     for batch in dataloader:
         x_label, V_label = batch
+        x_label = x_label.to(device)      # <── move data to GPU/Metal
+        V_label = V_label.to(device)      # <── move labels too
+
         V_pred = net(x_label)
         loss = loss_fn(V_pred, V_label)
 
@@ -209,11 +224,20 @@ def evaluate(net, dataloader):
 
     loss_fn = nn.MSELoss()
     
+    # with torch.no_grad():
+    #     for batch in dataloader:
+    #         x_label, V_label = batch
+    #         V_pred = net(x_label)
+    #         loss = loss_fn(V_pred, V_label)
+    #         total += loss.item()
+
     with torch.no_grad():
-        for batch in dataloader:
-            x_label, V_label = batch
+        for x_label, V_label in dataloader:
+            x_label = x_label.to(device)   # <── add this
+            V_label = V_label.to(device)   # <── add this
+
             V_pred = net(x_label)
-            loss = loss_fn(V_pred, V_label)
+            loss = nn.functional.mse_loss(V_pred, V_label)
             total += loss.item()
 
     net.train()
@@ -224,7 +248,7 @@ def evaluate(net, dataloader):
 
 fpath = "./simulation_data_2_particles.csv"
 df = pd.read_csv(fpath)
-df = df.iloc[:80000]
+df = df.iloc[:200000]
 
 split = int(len(df) * 0.8)
 df = df.sample(frac=1.0, random_state=42).reset_index(drop=True)
@@ -235,7 +259,7 @@ test_df = df.iloc[split:]
 print("Length of train", len(train_df))
 print("Length of test", len(test_df))
 
-net = AtomicNetwork(128)
+net = AtomicNetwork(128).to(device)
 
 train_dataset = Dataset(train_df)
 test_dataset = Dataset(test_df)
