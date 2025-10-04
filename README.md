@@ -11,8 +11,36 @@ This project reproduces the architecture from *Behler & Parrinello (2007)* and i
 
 ---
 
-## **Sample Results**
+## **Results**
 
+### Neural Network Predictions
+The following figures show how the trained BPNN captures the oscillatory energy patterns between two interacting particles over time.  
+`x₁` and `x₂` represent the positions of the two particles, while `V` denotes the predicted potential energy.
+
+| Neural Network Prediction 1 | Neural Network Prediction 2 |
+|-------------------------------------|--------------------------------------|
+| <img src="/Week_10/NN_1.jpeg" width="400"> | <img src="./Week_10/NN_2.jpeg" width="400"> |
+
+
+---
+
+### Data Breakdown
+The dataset used for training consists of **~1 million data points**, each representing an atomic configuration and its corresponding potential energy.  
+The distribution below shows the diversity of sampled configurations and the smooth physical behavior captured in the generated data.
+
+| Data Distribution and Energy Sampling |
+|--------------------------------------|
+| <img src="./Week_10/data_breakdown.png" width="600"> |
+
+---
+
+### Energy vs Particle Positions 
+| <img src="./Week_10/x_against_v1.png" width="600"> |
+| <img src="./Week_10/x_against_v2.png" width="600"> |
+
+This highlights the relationship between motion and energy:  
+- `x₁` and `x₂` oscillate out of phase, representing the two ends of a bonded system.  
+- The energy `V` oscillates at twice the frequency, peaking when the system is maximally stretched or compressed.  
 
 ---
 
