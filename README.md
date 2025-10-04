@@ -30,14 +30,15 @@ The distribution below shows the diversity of sampled configurations and the smo
 
 | Data Distribution and Energy Sampling |
 |--------------------------------------|
-| <div align="center"> <img src="./Week_10/data_breakdown.png" width="60%"> </div> |
+<div align="center"> <img src="./Week_10/data_breakdown.png"> </div> 
 
 ---
 
 ### Energy vs Particle Positions 
-| <div align="center"> <img src="./Week_10/x_against_v1.png" width="45%">
-  <img src="./Week_10/x_against_v2.png" width="45%">
-</div> |
+<div align="center"> 
+    <img src="./Week_10/x_against_v1.png" width="45%">
+    <img src="./Week_10/x_against_v2.png" width="45%">
+</div> 
 
 
 This highlights the relationship between motion and energy:  
