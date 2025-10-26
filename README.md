@@ -70,3 +70,5 @@ All configurations and energies were stored in a CSV file (`simulation_data_2_pa
 
 - **Framework:** PyTorch  
 - **Visualization:** Matplotlib for learning curves and convergence plots  
+
+<sub> Link of my research report: [Chemistry AI Research Report](https://docs.google.com/document/d/1ZXNV-3CY-khu5GghFjfxN2H7nssL3GaRGjgMf3X_Zhs/edit?tab=t.0#heading=h.gjdgxs)</sub>
