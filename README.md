@@ -1,6 +1,6 @@
 # **Behler–Parrinello Neural Network (BPNN) — PyTorch Implementation**
 
-Link of my research report: [Chemistry AI Research Report](https://github.com/Tanishqqq19/modelling_simulations/blob/main/Chemistry%20AI%20Research%20Report.pdf)
+Link of my research report: [Physics AI Research Report](https://github.com/Tanishqqq19/modelling_simulations/blob/main/Physics%20AI%20Research_Report.pdf)
 
 
 I built a **Behler–Parrinello Neural Network (BPNN)** from scratch in **PyTorch** to model **atomic potential energy surfaces** using **symmetry functions**.  
